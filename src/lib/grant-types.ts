@@ -61,8 +61,6 @@ export const INDIVIDUAL_INITIATIVES = new Set([
   'Getty Global Art and Sustainability Fellowships',
   'J. Paul Getty Museum Training Fellowships',
   'Getty Rothschild Fellow',
-  'Central and Eastern European Initiative',
-  'Research Grants (Team and Individual)',
 ]);
 
 export const CURRENT_INITIATIVES = [

@@ -128,13 +128,13 @@ async function fetchCsvFromSources<T>(sources: string[], parser: (row: Record<st
   throw new Error(`Failed to load data from all sources. ${errors.join(' | ')}`);
 }
 
-function applyBaseFilters<T extends { grantAwardYear: number; initiative: string; amountAwarded_USD: number }>(
+function applyBaseFilters<T extends { grantAwardYear: number; initiative: string; amountAwarded_USD: number; grantee_name: string }>(
   data: T[],
   filters: FilterState
 ): T[] {
   return data.filter((row) => {
     if (row.grantAwardYear < filters.yearRange[0] || row.grantAwardYear > filters.yearRange[1]) return false;
-    if (filters.orgOnly && isIndividual(row.initiative, row.amountAwarded_USD)) return false;
+    if (filters.orgOnly && isIndividualGrant(row)) return false;
     if (filters.selectedInitiatives && !filters.selectedInitiatives.includes(row.initiative)) return false;
     if (filters.minGrantAmount > 0 && row.amountAwarded_USD < filters.minGrantAmount) return false;
     return true;
