@@ -1,0 +1,55 @@
+# .github/workflows/update_getty_grants.yml
+#
+# Runs on the 5th of every month at 9 AM UTC.
+# On failure, GitHub will email the repo owner automatically.
+# You can also trigger it manually from the Actions tab at any time.
+
+name: Monthly Getty Grants Update
+
+on:
+  schedule:
+    - cron: '0 9 5 * *'
+  workflow_dispatch:
+
+jobs:
+  update-grants:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests pandas
+
+      - name: Run incremental update
+        run: python update_getty_grants.py getty_grants_clean.csv getty_grants_map.csv
+        # If this step fails (validation errors, network error, API change),
+        # the workflow stops here. Files are NOT committed. GitHub emails you.
+
+      - name: Check whether files actually changed
+        id: check_changes
+        run: |
+          git diff --quiet getty_grants_clean.csv getty_grants_map.csv \
+            || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Commit and push updated files
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add getty_grants_clean.csv getty_grants_map.csv
+          git commit -m "data: monthly Getty grants update $(date +'%Y-%m-%d')"
+          git push
+
+      - name: Report no new data
+        if: steps.check_changes.outputs.changed != 'true'
+        run: echo "Validation passed but no new data found. Nothing committed."
