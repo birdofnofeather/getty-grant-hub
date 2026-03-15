@@ -45,7 +45,7 @@ export interface FilterState {
 export const DEFAULT_FILTERS: FilterState = {
   yearRange: [1984, 2026],
   orgOnly: false,
-  metric: 'none',
+  metric: 'totalUSD',
   selectedInitiatives: null,
   minGrantAmount: 0,
   minGrantCountPerCountry: 1,
