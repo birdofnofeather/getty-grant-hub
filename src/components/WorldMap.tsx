@@ -70,14 +70,14 @@ function formatNum(n: number): string {
 function getColorRange(metric: ChoroplethMetric): [string, string] {
   switch (metric) {
     case 'totalUSD':
-      return ['#3d1f00', '#f59e0b']; // dark amber → bright amber
+      return ['#fde8cc', '#d97706']; // pale amber → vivid amber
     case 'uniqueGrantees':
     case 'uniqueInitiatives':
     case 'longevity':
-      return ['#1a3a2a', '#4ade80']; // dark green → bright green
+      return ['#bbf7d0', '#16a34a']; // pale green → vivid green
     case 'grantCount':
     default:
-      return ['#1e3a6e', '#38bdf8']; // dark blue → bright sky blue
+      return ['#c7e0f4', '#1a56db']; // pale steel blue → vivid royal blue
   }
 }
 
