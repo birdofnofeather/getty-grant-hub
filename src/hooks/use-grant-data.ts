@@ -128,7 +128,24 @@ export function useGrantData(filters: FilterState) {
   }, []);
 
   const filteredClean = useMemo(() => applyBaseFilters(cleanData, filters), [cleanData, filters]);
-  const filteredMap = useMemo(() => applyBaseFilters(mapData, filters), [mapData, filters]);
+  const filteredMap = useMemo(() => {
+    const base = applyBaseFilters(mapData, filters);
+    // PST LA/LA grants should only map to Los Angeles, USA
+    const PST_LALA = 'Pacific Standard Time: LA/LA';
+    const result: MapGrant[] = [];
+    const pstGrantIds = new Set<string>();
+    for (const row of base) {
+      if (row.initiative === PST_LALA || row.initiative === 'Grants Outside of LA in support of Pacific Standard Time: LA/LA') {
+        if (!pstGrantIds.has(row.grantId)) {
+          pstGrantIds.add(row.grantId);
+          result.push({ ...row, map_iso2: 'US', map_country: 'United States', map_city: 'Los Angeles', location_source: 'initiative_override' });
+        }
+      } else {
+        result.push(row);
+      }
+    }
+    return result;
+  }, [mapData, filters]);
 
   const headlineStats = useMemo(() => {
     const totalUSD = filteredClean.reduce((s, r) => s + (r.amountAwarded_USD > 0 ? r.amountAwarded_USD : 0), 0);
