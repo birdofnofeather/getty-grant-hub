@@ -66,9 +66,9 @@ function formatNum(n: number): string {
 }
 
 // Single-hue ramp — light to dark (higher value = darker)
-const UNIFORM_COLOR = '#3b82f6';
+const UNIFORM_COLOR = '#31a354';
 const NO_GRANT_COLOR = '#2a2f3a';
-const COLOR_RAMP = ['#ffffcc', '#c2e699', '#78c679', '#31a354', '#006837'];
+const COLOR_RAMP = ['#edf8e9', '#bae4b3', '#74c476', '#31a354', '#006d2c'];
 
 function getColorRamp(_metric: ChoroplethMetric): string[] {
   return COLOR_RAMP;
@@ -78,24 +78,28 @@ interface WorldMapProps {
   countryAgg: Map<string, CountryAgg>;
   metric: ChoroplethMetric;
   onCountryClick: (iso2: string) => void;
+  excludeUS: boolean;
+  onToggleExcludeUS: () => void;
 }
 
-export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMapProps) {
+export default function WorldMap({ countryAgg, metric, onCountryClick, excludeUS, onToggleExcludeUS }: WorldMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; content: React.ReactNode } | null>(null);
 
   const colorScale = useMemo(() => {
     if (metric === 'none') return null;
-    // Use non-US max so the US appears as dark as the next darkest country
-    const nonUsValues = Array.from(countryAgg.entries())
-      .filter(([iso]) => iso !== 'US')
-      .map(([, a]) => getMetricValue(a, metric))
-      .filter((v) => v > 0);
-    const allValues = Array.from(countryAgg.values()).map((a) => getMetricValue(a, metric)).filter((v) => v > 0);
+    const entries = Array.from(countryAgg.entries())
+      .filter(([iso]) => !excludeUS || iso !== 'US');
+    // When not excluding US, cap scale at non-US max so US appears darkest
+    const scaleEntries = excludeUS
+      ? entries
+      : entries.filter(([iso]) => iso !== 'US');
+    const allValues = entries.map(([, a]) => getMetricValue(a, metric)).filter((v) => v > 0);
+    const scaleValues = scaleEntries.map(([, a]) => getMetricValue(a, metric)).filter((v) => v > 0);
     if (allValues.length === 0) return null;
     const min = Math.min(...allValues);
-    const max = nonUsValues.length > 0 ? Math.max(...nonUsValues) : Math.max(...allValues);
+    const max = scaleValues.length > 0 ? Math.max(...scaleValues) : Math.max(...allValues);
     if (min === max) return null;
     const ramp = getColorRamp(metric);
     const scale = scaleLog()
@@ -105,20 +109,20 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
     return (v: number) => {
       if (v <= 0) return ramp[0];
       const idx = scale(Math.max(v, 1));
-      const lo = Math.floor(idx);
-      const hi = Math.min(lo + 1, ramp.length - 1);
-      // simple step
-      return ramp[Math.round(idx)] || ramp[lo];
+      return ramp[Math.round(idx)] || ramp[Math.floor(idx)];
     };
-  }, [countryAgg, metric]);
+  }, [countryAgg, metric, excludeUS]);
 
   const legendSteps = useMemo(() => {
     if (metric === 'none' || !colorScale) return [];
-    const allValues = Array.from(countryAgg.values()).map((a) => getMetricValue(a, metric)).filter((v) => v > 0);
-    const nonUsValues = Array.from(countryAgg.entries()).filter(([iso]) => iso !== 'US').map(([, a]) => getMetricValue(a, metric)).filter((v) => v > 0);
+    const entries = Array.from(countryAgg.entries())
+      .filter(([iso]) => !excludeUS || iso !== 'US');
+    const scaleEntries = excludeUS ? entries : entries.filter(([iso]) => iso !== 'US');
+    const allValues = entries.map(([, a]) => getMetricValue(a, metric)).filter((v) => v > 0);
+    const scaleValues = scaleEntries.map(([, a]) => getMetricValue(a, metric)).filter((v) => v > 0);
     if (allValues.length === 0) return [];
     const min = Math.max(Math.min(...allValues), 1);
-    const max = nonUsValues.length > 0 ? Math.max(...nonUsValues) : Math.max(...allValues);
+    const max = scaleValues.length > 0 ? Math.max(...scaleValues) : Math.max(...allValues);
     const ramp = getColorRamp(metric);
     const steps: { color: string; label: string }[] = [];
     for (let i = 0; i < ramp.length; i++) {
@@ -127,7 +131,7 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
       steps.push({ color: ramp[i], label });
     }
     return steps;
-  }, [countryAgg, metric, colorScale]);
+  }, [countryAgg, metric, colorScale, excludeUS]);
 
   const toggleFullscreen = useCallback(() => {
     if (!containerRef.current) return;
@@ -159,14 +163,27 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
       style={{ backgroundColor: '#0f172a' }}
       onMouseMove={handleMouseMove}
     >
-      {/* Fullscreen button */}
-      <button
-        onClick={toggleFullscreen}
-        className="absolute top-3 right-3 z-20 p-2 rounded-md bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
-        title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-      >
-        {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-      </button>
+      {/* Top-right controls */}
+      <div className="absolute top-3 right-3 z-20 flex gap-2">
+        <button
+          onClick={onToggleExcludeUS}
+          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+            excludeUS
+              ? 'bg-white/90 text-gray-900'
+              : 'bg-white/10 hover:bg-white/20 text-white/70 hover:text-white'
+          }`}
+          title={excludeUS ? 'Show US on map' : 'Exclude US and recalibrate scale'}
+        >
+          {excludeUS ? 'Show US' : 'Exclude US'}
+        </button>
+        <button
+          onClick={toggleFullscreen}
+          className="p-2 rounded-md bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
+          title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+        >
+          {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+        </button>
+      </div>
 
       {/* Hatching pattern for no-grant countries */}
       <svg width="0" height="0" style={{ position: 'absolute' }}>
@@ -216,7 +233,8 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
                 const numericId = geo.id || geo.properties?.iso_n3;
                 const alpha2 = NUMERIC_TO_ALPHA2[numericId] || geo.properties?.iso_a2 || '';
                 const agg = countryAgg.get(alpha2);
-                const hasGrants = !!agg;
+                const isExcluded = excludeUS && alpha2 === 'US';
+                const hasGrants = !!agg && !isExcluded;
 
                 let fill = 'url(#hatch)'; // no grants - gray hatched
                 if (hasGrants) {
