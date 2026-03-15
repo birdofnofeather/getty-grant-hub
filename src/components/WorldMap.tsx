@@ -235,7 +235,7 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
                     strokeWidth={0.5}
                     style={{
                       default: { outline: 'none' },
-                      hover: { outline: 'none', fill: hasGrants ? '#e2e8f0' : '#1e293b', cursor: hasGrants ? 'pointer' : 'default' },
+                      hover: { outline: 'none', fill: hasGrants ? '#e2e8f0' : undefined, cursor: hasGrants ? 'pointer' : 'default' },
                       pressed: { outline: 'none' },
                     }}
                     onMouseEnter={(e) => {
