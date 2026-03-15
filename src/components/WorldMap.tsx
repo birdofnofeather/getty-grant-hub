@@ -65,15 +65,13 @@ function formatNum(n: number): string {
   return n.toLocaleString('en-US');
 }
 
-// Color ramps — light to dark (higher value = darker)
+// Single-hue ramp — light to dark (higher value = darker)
 const UNIFORM_COLOR = '#3b82f6';
 const NO_GRANT_COLOR = '#2a2f3a';
-const WARM_RAMP = ['#fef3c7', '#fde68a', '#fbbf24', '#f59e0b', '#d97706', '#b45309', '#92400e', '#78350f'];
-const COOL_RAMP = ['#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#0ea5e9', '#0284c7', '#0369a1', '#075985'];
+const COLOR_RAMP = ['#dbeafe', '#bfdbfe', '#93c5fd', '#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8', '#1e3a8a'];
 
-function getColorRamp(metric: ChoroplethMetric): string[] {
-  if (metric === 'totalUSD') return WARM_RAMP;
-  return COOL_RAMP;
+function getColorRamp(_metric: ChoroplethMetric): string[] {
+  return COLOR_RAMP;
 }
 
 interface WorldMapProps {
