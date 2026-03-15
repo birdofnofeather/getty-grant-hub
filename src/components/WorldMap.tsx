@@ -89,10 +89,15 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
 
   const colorScale = useMemo(() => {
     if (metric === 'none') return null;
-    const values = Array.from(countryAgg.values()).map((a) => getMetricValue(a, metric)).filter((v) => v > 0);
-    if (values.length === 0) return null;
-    const min = Math.min(...values);
-    const max = Math.max(...values);
+    // Use non-US max so the US appears as dark as the next darkest country
+    const nonUsValues = Array.from(countryAgg.entries())
+      .filter(([iso]) => iso !== 'US')
+      .map(([, a]) => getMetricValue(a, metric))
+      .filter((v) => v > 0);
+    const allValues = Array.from(countryAgg.values()).map((a) => getMetricValue(a, metric)).filter((v) => v > 0);
+    if (allValues.length === 0) return null;
+    const min = Math.min(...allValues);
+    const max = nonUsValues.length > 0 ? Math.max(...nonUsValues) : Math.max(...allValues);
     if (min === max) return null;
     const ramp = getColorRamp(metric);
     const scale = scaleLog()
