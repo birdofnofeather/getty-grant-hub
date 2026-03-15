@@ -20,8 +20,6 @@ interface FilterDrawerProps {
 export default function FilterDrawer({ mode, filters, onChange, allInitiatives }: FilterDrawerProps) {
   const [initiativeSearch, setInitiativeSearch] = useState('');
 
-  if (mode === 'none') return null;
-
   const isAdvanced = mode === 'advanced';
   const hasChanges = JSON.stringify(filters) !== JSON.stringify(DEFAULT_FILTERS);
 
