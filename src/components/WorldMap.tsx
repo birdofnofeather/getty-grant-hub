@@ -65,10 +65,11 @@ function formatNum(n: number): string {
   return n.toLocaleString('en-US');
 }
 
-// Color ramps
+// Color ramps — light to dark (higher value = darker)
 const UNIFORM_COLOR = '#3b82f6';
-const WARM_RAMP = ['#fef3c7', '#fbbf24', '#f59e0b', '#d97706', '#b45309', '#92400e'];
-const COOL_RAMP = ['#cffafe', '#67e8f9', '#22d3ee', '#06b6d4', '#0891b2', '#155e75'];
+const NO_GRANT_COLOR = '#2a2f3a';
+const WARM_RAMP = ['#fef3c7', '#fde68a', '#fbbf24', '#f59e0b', '#d97706', '#b45309', '#92400e', '#78350f'];
+const COOL_RAMP = ['#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#0ea5e9', '#0284c7', '#0369a1', '#075985'];
 
 function getColorRamp(metric: ChoroplethMetric): string[] {
   if (metric === 'totalUSD') return WARM_RAMP;
@@ -163,19 +164,28 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
         {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
       </button>
 
-      {/* Legend */}
+      {/* Hatching pattern for no-grant countries */}
+      <svg width="0" height="0" style={{ position: 'absolute' }}>
+        <defs>
+          <pattern id="hatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+            <rect width="6" height="6" fill={NO_GRANT_COLOR} />
+            <line x1="0" y1="0" x2="0" y2="6" stroke="#3a4050" strokeWidth="0.8" />
+          </pattern>
+        </defs>
+      </svg>
+
+      {/* Legend — continuous bar */}
       {metric !== 'none' && legendSteps.length > 0 && (
         <div className="absolute bottom-4 left-4 z-20 bg-black/60 backdrop-blur-sm rounded-lg p-3 text-white/90 text-xs">
           <div className="font-medium mb-2">{getMetricLabel(metric)}</div>
-          <div className="flex items-end gap-0.5">
+          <div className="flex rounded overflow-hidden" style={{ height: 12, width: legendSteps.length * 24 }}>
             {legendSteps.map((step, i) => (
-              <div key={i} className="flex flex-col items-center">
-                <div className="w-6 h-4 rounded-sm" style={{ backgroundColor: step.color }} />
-                {(i === 0 || i === legendSteps.length - 1 || i === Math.floor(legendSteps.length / 2)) && (
-                  <span className="mt-1 text-[10px] text-white/60">{step.label}</span>
-                )}
-              </div>
+              <div key={i} style={{ backgroundColor: step.color, flex: 1 }} />
             ))}
+          </div>
+          <div className="flex justify-between mt-1">
+            <span className="text-[10px] text-white/60">{legendSteps[0].label}</span>
+            <span className="text-[10px] text-white/60">{legendSteps[legendSteps.length - 1].label}</span>
           </div>
         </div>
       )}
@@ -204,7 +214,7 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
                 const agg = countryAgg.get(alpha2);
                 const hasGrants = !!agg;
 
-                let fill = '#1e293b'; // no grants - dark neutral
+                let fill = 'url(#hatch)'; // no grants - gray hatched
                 if (hasGrants) {
                   if (metric === 'none') {
                     fill = UNIFORM_COLOR;
@@ -225,7 +235,7 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
                     strokeWidth={0.5}
                     style={{
                       default: { outline: 'none' },
-                      hover: { outline: 'none', fill: hasGrants ? '#e2e8f0' : '#1e293b', cursor: hasGrants ? 'pointer' : 'default' },
+                      hover: { outline: 'none', fill: hasGrants ? '#e2e8f0' : undefined, cursor: hasGrants ? 'pointer' : 'default' },
                       pressed: { outline: 'none' },
                     }}
                     onMouseEnter={(e) => {

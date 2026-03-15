@@ -74,20 +74,25 @@ export default function FilterDrawer({ mode, filters, onChange, allInitiatives }
 
   return (
     <div className="bg-card border-t rounded-t-xl shadow-xl p-4 space-y-4 max-h-[50vh] overflow-y-auto">
-      {/* Year range */}
       <div>
         <Label className="text-xs text-muted-foreground uppercase tracking-wide">Year Range</Label>
-        <div className="flex items-center gap-3 mt-1">
-          <span className="text-sm font-mono tabular-nums">{filters.yearRange[0]}</span>
-          <Slider
-            min={1984}
-            max={2026}
-            step={1}
-            value={filters.yearRange}
-            onValueChange={(v) => onChange({ yearRange: v as [number, number] })}
-            className="flex-1"
-          />
-          <span className="text-sm font-mono tabular-nums">{filters.yearRange[1]}</span>
+        <div className="mt-1">
+          <div className="flex justify-between text-[10px] text-muted-foreground mb-0.5">
+            <span>1984</span>
+            <span>2026</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-mono tabular-nums font-semibold min-w-[3ch]">{filters.yearRange[0]}</span>
+            <Slider
+              min={1984}
+              max={2026}
+              step={1}
+              value={filters.yearRange}
+              onValueChange={(v) => onChange({ yearRange: v as [number, number] })}
+              className="flex-1"
+            />
+            <span className="text-sm font-mono tabular-nums font-semibold min-w-[3ch]">{filters.yearRange[1]}</span>
+          </div>
         </div>
       </div>
 
