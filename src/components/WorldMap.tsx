@@ -66,9 +66,9 @@ function formatNum(n: number): string {
 }
 
 // Single-hue ramp — light to dark (higher value = darker)
-const UNIFORM_COLOR = '#3b82f6';
+const UNIFORM_COLOR = '#31a354';
 const NO_GRANT_COLOR = '#2a2f3a';
-const COLOR_RAMP = ['#ffffcc', '#c2e699', '#78c679', '#31a354', '#006837'];
+const COLOR_RAMP = ['#edf8e9', '#bae4b3', '#74c476', '#31a354', '#006d2c'];
 
 function getColorRamp(_metric: ChoroplethMetric): string[] {
   return COLOR_RAMP;
