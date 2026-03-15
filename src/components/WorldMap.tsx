@@ -214,7 +214,7 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
                 const agg = countryAgg.get(alpha2);
                 const hasGrants = !!agg;
 
-                let fill = '#1e293b'; // no grants - dark neutral
+                let fill = 'url(#hatch)'; // no grants - gray hatched
                 if (hasGrants) {
                   if (metric === 'none') {
                     fill = UNIFORM_COLOR;
