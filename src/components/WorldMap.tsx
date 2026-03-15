@@ -106,14 +106,12 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
   const legendSteps = useMemo(() => {
     if (metric === 'none' || !colorScale) return [];
     const allValues = Array.from(countryAgg.values()).map((a) => getMetricValue(a, metric)).filter((v) => v > 0);
-    const nonUsValues = Array.from(countryAgg.entries()).filter(([iso]) => iso !== 'US').map(([, a]) => getMetricValue(a, metric)).filter((v) => v > 0);
     if (allValues.length === 0) return [];
-    const min = Math.max(Math.min(...allValues), 1);
-    const max = nonUsValues.length > 0 ? Math.max(...nonUsValues) : Math.max(...allValues);
+    const max = Math.max(...allValues);
     const ramp = getColorRamp(metric);
     const steps: { color: string; label: string }[] = [];
     for (let i = 0; i < ramp.length; i++) {
-      const v = min * Math.pow(max / min, i / (ramp.length - 1));
+      const v = (max * i) / (ramp.length - 1);
       const label = metric === 'totalUSD' ? formatUSD(Math.round(v)) : formatNum(Math.round(v));
       steps.push({ color: ramp[i], label });
     }
