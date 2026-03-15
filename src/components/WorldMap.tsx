@@ -89,15 +89,17 @@ export default function WorldMap({ countryAgg, metric, onCountryClick, excludeUS
 
   const colorScale = useMemo(() => {
     if (metric === 'none') return null;
-    // Use non-US max so the US appears as dark as the next darkest country
-    const nonUsValues = Array.from(countryAgg.entries())
-      .filter(([iso]) => iso !== 'US')
-      .map(([, a]) => getMetricValue(a, metric))
-      .filter((v) => v > 0);
-    const allValues = Array.from(countryAgg.values()).map((a) => getMetricValue(a, metric)).filter((v) => v > 0);
+    const entries = Array.from(countryAgg.entries())
+      .filter(([iso]) => !excludeUS || iso !== 'US');
+    // When not excluding US, cap scale at non-US max so US appears darkest
+    const scaleEntries = excludeUS
+      ? entries
+      : entries.filter(([iso]) => iso !== 'US');
+    const allValues = entries.map(([, a]) => getMetricValue(a, metric)).filter((v) => v > 0);
+    const scaleValues = scaleEntries.map(([, a]) => getMetricValue(a, metric)).filter((v) => v > 0);
     if (allValues.length === 0) return null;
     const min = Math.min(...allValues);
-    const max = nonUsValues.length > 0 ? Math.max(...nonUsValues) : Math.max(...allValues);
+    const max = scaleValues.length > 0 ? Math.max(...scaleValues) : Math.max(...allValues);
     if (min === max) return null;
     const ramp = getColorRamp(metric);
     const scale = scaleLog()
@@ -107,12 +109,9 @@ export default function WorldMap({ countryAgg, metric, onCountryClick, excludeUS
     return (v: number) => {
       if (v <= 0) return ramp[0];
       const idx = scale(Math.max(v, 1));
-      const lo = Math.floor(idx);
-      const hi = Math.min(lo + 1, ramp.length - 1);
-      // simple step
-      return ramp[Math.round(idx)] || ramp[lo];
+      return ramp[Math.round(idx)] || ramp[Math.floor(idx)];
     };
-  }, [countryAgg, metric]);
+  }, [countryAgg, metric, excludeUS]);
 
   const legendSteps = useMemo(() => {
     if (metric === 'none' || !colorScale) return [];
