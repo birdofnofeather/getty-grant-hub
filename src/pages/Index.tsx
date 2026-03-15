@@ -76,6 +76,8 @@ const Index = () => {
                 countryAgg={countryAgg}
                 metric={filters.metric}
                 onCountryClick={(iso2) => setSelectedCountry(iso2)}
+                excludeUS={excludeUS}
+                onToggleExcludeUS={() => setExcludeUS((v) => !v)}
               />
 
               {/* Mode toggle buttons */}

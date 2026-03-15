@@ -233,7 +233,8 @@ export default function WorldMap({ countryAgg, metric, onCountryClick, excludeUS
                 const numericId = geo.id || geo.properties?.iso_n3;
                 const alpha2 = NUMERIC_TO_ALPHA2[numericId] || geo.properties?.iso_a2 || '';
                 const agg = countryAgg.get(alpha2);
-                const hasGrants = !!agg;
+                const isExcluded = excludeUS && alpha2 === 'US';
+                const hasGrants = !!agg && !isExcluded;
 
                 let fill = 'url(#hatch)'; // no grants - gray hatched
                 if (hasGrants) {
