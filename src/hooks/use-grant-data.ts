@@ -1,10 +1,19 @@
 import { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
-import type { CleanGrant, MapGrant, FilterState, CountryAgg, INDIVIDUAL_INITIATIVES } from '@/lib/grant-types';
+import type { CleanGrant, MapGrant, FilterState, CountryAgg } from '@/lib/grant-types';
 import { INDIVIDUAL_INITIATIVES as INDIV_SET } from '@/lib/grant-types';
 
-const CLEAN_URL = 'https://raw.githubusercontent.com/birdofnofeather/getty-grant-hub/main/getty_grants_clean.csv';
-const MAP_URL = 'https://raw.githubusercontent.com/birdofnofeather/getty-grant-hub/main/getty_grants_map.csv';
+const CLEAN_SOURCES = [
+  'https://raw.githubusercontent.com/birdofnofeather/getty-grant-hub/main/getty_grants_clean.csv',
+  'https://raw.githubusercontent.com/birdofnofeather/getty-grant-hub/master/getty_grants_clean.csv',
+  '/getty_grants_clean.csv',
+];
+
+const MAP_SOURCES = [
+  'https://raw.githubusercontent.com/birdofnofeather/getty-grant-hub/main/getty_grants_map.csv',
+  'https://raw.githubusercontent.com/birdofnofeather/getty-grant-hub/master/getty_grants_map.csv',
+  '/getty_grants_map.csv',
+];
 
 function stripHtml(s: string): string {
   return s.replace(/<[^>]*>/g, '');
@@ -52,7 +61,9 @@ async function fetchCsv<T>(url: string, parser: (row: Record<string, string>) =>
   if (!response.ok) {
     throw new Error(`HTTP ${response.status} fetching ${url}`);
   }
+
   const csvText = await response.text();
+
   return new Promise((resolve, reject) => {
     Papa.parse(csvText, {
       header: true,
@@ -63,6 +74,21 @@ async function fetchCsv<T>(url: string, parser: (row: Record<string, string>) =>
       error: (err: Error) => reject(err),
     });
   });
+}
+
+async function fetchCsvFromSources<T>(sources: string[], parser: (row: Record<string, string>) => T): Promise<T[]> {
+  const errors: string[] = [];
+
+  for (const source of sources) {
+    try {
+      return await fetchCsv(source, parser);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push(`${source} -> ${message}`);
+    }
+  }
+
+  throw new Error(`Failed to load data from all sources. ${errors.join(' | ')}`);
 }
 
 function applyBaseFilters<T extends { grantAwardYear: number; initiative: string; amountAwarded_USD: number }>(
@@ -85,10 +111,14 @@ export function useGrantData(filters: FilterState) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([fetchCsv(CLEAN_URL, parseClean), fetchCsv(MAP_URL, parseMap)])
+    Promise.all([
+      fetchCsvFromSources(CLEAN_SOURCES, parseClean),
+      fetchCsvFromSources(MAP_SOURCES, parseMap),
+    ])
       .then(([clean, map]) => {
         setCleanData(clean);
         setMapData(map);
+        setError(null);
         setLoading(false);
       })
       .catch((err) => {
