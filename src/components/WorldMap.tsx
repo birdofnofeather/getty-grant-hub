@@ -5,7 +5,7 @@ import {
   Geography,
   ZoomableGroup,
 } from 'react-simple-maps';
-import { scaleLog } from 'd3-scale';
+import { scaleLinear } from 'd3-scale';
 import { Maximize, Minimize } from 'lucide-react';
 import type { CountryAgg, ChoroplethMetric } from '@/lib/grant-types';
 
