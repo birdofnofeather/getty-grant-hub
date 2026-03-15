@@ -68,7 +68,17 @@ function formatNum(n: number): string {
 // Single-hue ramp — light to dark (higher value = darker)
 const UNIFORM_COLOR = '#3b82f6';
 const NO_GRANT_COLOR = '#2a2f3a';
-const COLOR_RAMP = ['#f7fcf5', '#e5f5e0', '#c7e9c0', '#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
+// Single-hue blue ramp (Getty Blue h=223) — very light to very dark
+const COLOR_RAMP = [
+  'hsl(223, 75%, 95%)',
+  'hsl(223, 75%, 85%)',
+  'hsl(223, 75%, 72%)',
+  'hsl(223, 75%, 60%)',
+  'hsl(223, 75%, 48%)',
+  'hsl(223, 75%, 36%)',
+  'hsl(223, 75%, 24%)',
+  'hsl(223, 75%, 12%)',
+];
 
 function getColorRamp(_metric: ChoroplethMetric): string[] {
   return COLOR_RAMP;
