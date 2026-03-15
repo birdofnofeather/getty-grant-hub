@@ -82,7 +82,7 @@ interface WorldMapProps {
   onToggleExcludeUS: () => void;
 }
 
-export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMapProps) {
+export default function WorldMap({ countryAgg, metric, onCountryClick, excludeUS, onToggleExcludeUS }: WorldMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; content: React.ReactNode } | null>(null);
