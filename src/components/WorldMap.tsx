@@ -163,14 +163,27 @@ export default function WorldMap({ countryAgg, metric, onCountryClick, excludeUS
       style={{ backgroundColor: '#0f172a' }}
       onMouseMove={handleMouseMove}
     >
-      {/* Fullscreen button */}
-      <button
-        onClick={toggleFullscreen}
-        className="absolute top-3 right-3 z-20 p-2 rounded-md bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
-        title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-      >
-        {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-      </button>
+      {/* Top-right controls */}
+      <div className="absolute top-3 right-3 z-20 flex gap-2">
+        <button
+          onClick={onToggleExcludeUS}
+          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+            excludeUS
+              ? 'bg-white/90 text-gray-900'
+              : 'bg-white/10 hover:bg-white/20 text-white/70 hover:text-white'
+          }`}
+          title={excludeUS ? 'Show US on map' : 'Exclude US and recalibrate scale'}
+        >
+          {excludeUS ? 'Show US' : 'Exclude US'}
+        </button>
+        <button
+          onClick={toggleFullscreen}
+          className="p-2 rounded-md bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
+          title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+        >
+          {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+        </button>
+      </div>
 
       {/* Hatching pattern for no-grant countries */}
       <svg width="0" height="0" style={{ position: 'absolute' }}>
