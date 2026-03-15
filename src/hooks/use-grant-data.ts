@@ -19,9 +19,46 @@ function stripHtml(s: string): string {
   return s.replace(/<[^>]*>/g, '');
 }
 
-function isIndividual(initiative: string, amount: number): boolean {
-  if (INDIV_SET.has(initiative)) return true;
-  if (initiative === 'Summer Institutes' && amount < 5000) return true;
+const HONORIFICS = ['Mr.', 'Ms.', 'Mrs.', 'Dr.', 'Professor ', 'Prof.', 'Miss ', 'Arq.'];
+
+const SCOPED_INITIATIVES = new Set([
+  'Central and Eastern European Initiative',
+  'Research Grants (Team and Individual)',
+]);
+
+const ORG_KEYWORDS = /university|college|collegium|museum|institute|institut|foundation|fondation|stiftung|association|asociaci[oó]n|center|centre|academy|library|council|society|trust|fund|school|gallery|archive|research|national|international|royal|state|federal|regents|board|directorate|seminar|forum|program|programme|office|department|ministry|government|authority|agency|committee|commission|corporation|company|inc\.|ltd\.|llc|arts$/i;
+
+function looksLikePersonName(name: string): boolean {
+  if (!name || typeof name !== 'string') return false;
+  if (ORG_KEYWORDS.test(name)) return false;
+  const words = name.trim().split(/\s+/);
+  if (words.length < 2 || words.length > 4) return false;
+  if (/\d/.test(name)) return false;
+  for (const word of words) {
+    if (!/^[A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF\-'.]+$/.test(word)) return false;
+  }
+  return true;
+}
+
+function isIndividualGrant(row: { initiative: string; amountAwarded_USD: number; grantee_name: string }): boolean {
+  // Signal 1: Initiative-level blanket rules
+  if (INDIV_SET.has(row.initiative)) return true;
+  if (row.initiative === 'Summer Institutes' && row.amountAwarded_USD < 5000) return true;
+
+  // Signal 2: Honorific prefix check
+  if (HONORIFICS.some(h => row.grantee_name.startsWith(h))) return true;
+
+  // Signal 3: CEEI amount rule
+  if (row.initiative === 'Central and Eastern European Initiative') {
+    const amt = row.amountAwarded_USD;
+    if (amt === 5000 || amt === 10000) return true;
+  }
+
+  // Signal 4: Name-pattern heuristic for scoped initiatives
+  if (SCOPED_INITIATIVES.has(row.initiative)) {
+    if (looksLikePersonName(row.grantee_name)) return true;
+  }
+
   return false;
 }
 
@@ -91,13 +128,13 @@ async function fetchCsvFromSources<T>(sources: string[], parser: (row: Record<st
   throw new Error(`Failed to load data from all sources. ${errors.join(' | ')}`);
 }
 
-function applyBaseFilters<T extends { grantAwardYear: number; initiative: string; amountAwarded_USD: number }>(
+function applyBaseFilters<T extends { grantAwardYear: number; initiative: string; amountAwarded_USD: number; grantee_name: string }>(
   data: T[],
   filters: FilterState
 ): T[] {
   return data.filter((row) => {
     if (row.grantAwardYear < filters.yearRange[0] || row.grantAwardYear > filters.yearRange[1]) return false;
-    if (filters.orgOnly && isIndividual(row.initiative, row.amountAwarded_USD)) return false;
+    if (filters.orgOnly && isIndividualGrant(row)) return false;
     if (filters.selectedInitiatives && !filters.selectedInitiatives.includes(row.initiative)) return false;
     if (filters.minGrantAmount > 0 && row.amountAwarded_USD < filters.minGrantAmount) return false;
     return true;
