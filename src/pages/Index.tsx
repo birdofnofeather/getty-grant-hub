@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import WorldMap from '@/components/WorldMap';
 import FilterDrawer from '@/components/FilterDrawer';
@@ -19,7 +19,14 @@ const Index = () => {
   const [drawerMode, setDrawerMode] = useState<DrawerMode>('none');
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
 
-  const { loading, error, headlineStats, countryAgg, allInitiatives, filteredMap, filteredClean } = useGrantData(filters);
+  const { loading, error, headlineStats, countryAgg, allInitiatives, filteredMap, filteredClean, maxYear } = useGrantData(filters);
+
+  // Extend year range to maxYear once data loads
+  useEffect(() => {
+    if (!loading && maxYear > filters.yearRange[1]) {
+      setFilters((prev) => ({ ...prev, yearRange: [prev.yearRange[0], maxYear] }));
+    }
+  }, [loading, maxYear]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateFilters = useCallback((partial: Partial<FilterState>) => {
     setFilters((prev) => ({ ...prev, ...partial }));
@@ -55,7 +62,7 @@ const Index = () => {
               <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Total Granted (USD)</div>
               <div className="text-2xl font-bold text-foreground tabular-nums">{formatUSD(headlineStats.totalUSD)}</div>
               {headlineStats.hasPartialYear && (
-                <div className="text-[10px] text-muted-foreground mt-1">* 2026 data is partial (year in progress)</div>
+                <div className="text-[10px] text-muted-foreground mt-1">* {maxYear} data is partial (year in progress)</div>
               )}
             </div>
             <div className="flex-1 bg-card rounded-lg border p-4 shadow-sm">
@@ -107,6 +114,7 @@ const Index = () => {
                 filters={filters}
                 onChange={updateFilters}
                 allInitiatives={allInitiatives}
+                maxYear={maxYear}
               />
             </>
           ) : null}

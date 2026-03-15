@@ -6,6 +6,7 @@ import {
   ZoomableGroup,
 } from 'react-simple-maps';
 import { scaleLog } from 'd3-scale';
+import { interpolateRgb } from 'd3-interpolate';
 import { Maximize, Minimize } from 'lucide-react';
 import type { CountryAgg, ChoroplethMetric } from '@/lib/grant-types';
 
@@ -65,24 +66,23 @@ function formatNum(n: number): string {
   return n.toLocaleString('en-US');
 }
 
-// Single-hue ramp — light to dark (higher value = darker)
-const UNIFORM_COLOR = '#3b82f6';
-const NO_GRANT_COLOR = '#2a2f3a';
-// Single-hue blue ramp (Getty Blue h=223) — very light to very dark
-const COLOR_RAMP = [
-  'hsl(223, 75%, 95%)',
-  'hsl(223, 75%, 85%)',
-  'hsl(223, 75%, 72%)',
-  'hsl(223, 75%, 60%)',
-  'hsl(223, 75%, 48%)',
-  'hsl(223, 75%, 36%)',
-  'hsl(223, 75%, 24%)',
-  'hsl(223, 75%, 12%)',
-];
-
-function getColorRamp(_metric: ChoroplethMetric): string[] {
-  return COLOR_RAMP;
+// Color ranges per metric type — dark-muted to bright-saturated (for dark bg)
+function getColorRange(metric: ChoroplethMetric): [string, string] {
+  switch (metric) {
+    case 'totalUSD':
+      return ['#3d1f00', '#f59e0b']; // dark amber → bright amber
+    case 'uniqueGrantees':
+    case 'uniqueInitiatives':
+    case 'longevity':
+      return ['#1a3a2a', '#4ade80']; // dark green → bright green
+    case 'grantCount':
+    default:
+      return ['#1e3a6e', '#38bdf8']; // dark blue → bright sky blue
+  }
 }
+
+const UNIFORM_COLOR = '#2563eb';
+const NO_GRANT_COLOR = '#2a2f3a';
 
 interface WorldMapProps {
   countryAgg: Map<string, CountryAgg>;
@@ -97,7 +97,7 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
 
   const colorScale = useMemo(() => {
     if (metric === 'none') return null;
-    // Use non-US max so the US appears as dark as the next darkest country
+    // Use non-US max so the US appears as bright as the next brightest country (domain cap)
     const nonUsValues = Array.from(countryAgg.entries())
       .filter(([iso]) => iso !== 'US')
       .map(([, a]) => getMetricValue(a, metric))
@@ -107,36 +107,30 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
     const min = Math.min(...allValues);
     const max = nonUsValues.length > 0 ? Math.max(...nonUsValues) : Math.max(...allValues);
     if (min === max) return null;
-    const ramp = getColorRamp(metric);
+
+    const [colorMin, colorMax] = getColorRange(metric);
     const scale = scaleLog()
       .domain([Math.max(min, 1), max])
-      .range([0, ramp.length - 1])
+      .range([0, 1])
       .clamp(true);
+    const interp = interpolateRgb(colorMin, colorMax);
+
     return (v: number) => {
-      if (v <= 0) return ramp[0];
-      const idx = scale(Math.max(v, 1));
-      const lo = Math.floor(idx);
-      const hi = Math.min(lo + 1, ramp.length - 1);
-      // simple step
-      return ramp[Math.round(idx)] || ramp[lo];
+      if (v <= 0) return colorMin;
+      return interp(scale(Math.max(v, 1)));
     };
   }, [countryAgg, metric]);
 
-  const legendSteps = useMemo(() => {
-    if (metric === 'none' || !colorScale) return [];
+  const legendRange = useMemo(() => {
+    if (metric === 'none' || !colorScale) return null;
     const allValues = Array.from(countryAgg.values()).map((a) => getMetricValue(a, metric)).filter((v) => v > 0);
     const nonUsValues = Array.from(countryAgg.entries()).filter(([iso]) => iso !== 'US').map(([, a]) => getMetricValue(a, metric)).filter((v) => v > 0);
-    if (allValues.length === 0) return [];
+    if (allValues.length === 0) return null;
     const min = Math.max(Math.min(...allValues), 1);
     const max = nonUsValues.length > 0 ? Math.max(...nonUsValues) : Math.max(...allValues);
-    const ramp = getColorRamp(metric);
-    const steps: { color: string; label: string }[] = [];
-    for (let i = 0; i < ramp.length; i++) {
-      const v = min * Math.pow(max / min, i / (ramp.length - 1));
-      const label = metric === 'totalUSD' ? formatUSD(Math.round(v)) : formatNum(Math.round(v));
-      steps.push({ color: ramp[i], label });
-    }
-    return steps;
+    const [colorMin, colorMax] = getColorRange(metric);
+    const fmt = metric === 'totalUSD' ? formatUSD : formatNum;
+    return { colorMin, colorMax, minLabel: fmt(Math.round(min)), maxLabel: fmt(Math.round(max)) };
   }, [countryAgg, metric, colorScale]);
 
   const toggleFullscreen = useCallback(() => {
@@ -188,18 +182,21 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
         </defs>
       </svg>
 
-      {/* Legend — continuous bar */}
-      {metric !== 'none' && legendSteps.length > 0 && (
+      {/* Legend — continuous gradient bar */}
+      {metric !== 'none' && legendRange && (
         <div className="absolute bottom-4 left-4 z-20 bg-black/60 backdrop-blur-sm rounded-lg p-3 text-white/90 text-xs">
           <div className="font-medium mb-2">{getMetricLabel(metric)}</div>
-          <div className="flex rounded overflow-hidden" style={{ height: 12, width: legendSteps.length * 24 }}>
-            {legendSteps.map((step, i) => (
-              <div key={i} style={{ backgroundColor: step.color, flex: 1 }} />
-            ))}
-          </div>
-          <div className="flex justify-between mt-1">
-            <span className="text-[10px] text-white/60">{legendSteps[0].label}</span>
-            <span className="text-[10px] text-white/60">{legendSteps[legendSteps.length - 1].label}</span>
+          <div
+            className="rounded overflow-hidden"
+            style={{
+              height: 12,
+              width: 192,
+              background: `linear-gradient(to right, ${legendRange.colorMin}, ${legendRange.colorMax})`,
+            }}
+          />
+          <div className="flex justify-between mt-1" style={{ width: 192 }}>
+            <span className="text-[10px] text-white/60">{legendRange.minLabel}</span>
+            <span className="text-[10px] text-white/60">{legendRange.maxLabel}</span>
           </div>
         </div>
       )}

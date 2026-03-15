@@ -15,9 +15,10 @@ interface FilterDrawerProps {
   filters: FilterState;
   onChange: (f: Partial<FilterState>) => void;
   allInitiatives: string[];
+  maxYear: number;
 }
 
-export default function FilterDrawer({ mode, filters, onChange, allInitiatives }: FilterDrawerProps) {
+export default function FilterDrawer({ mode, filters, onChange, allInitiatives, maxYear }: FilterDrawerProps) {
   const [initiativeSearch, setInitiativeSearch] = useState('');
 
   const isAdvanced = mode === 'advanced';
@@ -79,13 +80,13 @@ export default function FilterDrawer({ mode, filters, onChange, allInitiatives }
         <div className="mt-1">
           <div className="flex justify-between text-[10px] text-muted-foreground mb-0.5">
             <span>1984</span>
-            <span>2026</span>
+            <span>{maxYear}</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm font-mono tabular-nums font-semibold min-w-[3ch]">{filters.yearRange[0]}</span>
             <Slider
               min={1984}
-              max={2026}
+              max={maxYear}
               step={1}
               value={filters.yearRange}
               onValueChange={(v) => onChange({ yearRange: v as [number, number] })}

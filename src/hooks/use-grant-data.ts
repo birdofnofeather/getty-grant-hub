@@ -248,6 +248,13 @@ export function useGrantData(filters: FilterState) {
     return Array.from(set).sort();
   }, [cleanData]);
 
+  const maxYear = useMemo(() =>
+    cleanData.length > 0
+      ? Math.max(...cleanData.map(r => r.grantAwardYear))
+      : 2026,
+    [cleanData]
+  );
+
   return {
     loading,
     error,
@@ -258,5 +265,6 @@ export function useGrantData(filters: FilterState) {
     headlineStats,
     countryAgg,
     allInitiatives,
+    maxYear,
   };
 }
