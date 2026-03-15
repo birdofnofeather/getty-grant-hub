@@ -15,6 +15,7 @@ interface FilterDrawerProps {
   filters: FilterState;
   onChange: (f: Partial<FilterState>) => void;
   allInitiatives: string[];
+  maxYear: number;
 }
 
 export default function FilterDrawer({ mode, filters, onChange, allInitiatives }: FilterDrawerProps) {
