@@ -78,6 +78,8 @@ interface WorldMapProps {
   countryAgg: Map<string, CountryAgg>;
   metric: ChoroplethMetric;
   onCountryClick: (iso2: string) => void;
+  excludeUS: boolean;
+  onToggleExcludeUS: () => void;
 }
 
 export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMapProps) {
