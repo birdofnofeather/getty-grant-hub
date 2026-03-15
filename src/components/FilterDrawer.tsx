@@ -70,7 +70,8 @@ export default function FilterDrawer({ mode, filters, onChange, allInitiatives }
     }
   };
 
-  return (
+  if (mode === 'none') return null;
+
     <div className="bg-card border-t rounded-t-xl shadow-xl p-4 space-y-4 max-h-[50vh] overflow-y-auto">
       {/* Year range */}
       <div>
