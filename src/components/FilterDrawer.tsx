@@ -18,7 +18,7 @@ interface FilterDrawerProps {
   maxYear: number;
 }
 
-export default function FilterDrawer({ mode, filters, onChange, allInitiatives }: FilterDrawerProps) {
+export default function FilterDrawer({ mode, filters, onChange, allInitiatives, maxYear }: FilterDrawerProps) {
   const [initiativeSearch, setInitiativeSearch] = useState('');
 
   const isAdvanced = mode === 'advanced';
