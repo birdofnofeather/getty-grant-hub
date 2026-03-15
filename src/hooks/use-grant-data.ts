@@ -47,10 +47,14 @@ function parseMap(row: Record<string, string>): MapGrant {
   };
 }
 
-function fetchCsv<T>(url: string, parser: (row: Record<string, string>) => T): Promise<T[]> {
+async function fetchCsv<T>(url: string, parser: (row: Record<string, string>) => T): Promise<T[]> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} fetching ${url}`);
+  }
+  const csvText = await response.text();
   return new Promise((resolve, reject) => {
-    Papa.parse(url, {
-      download: true,
+    Papa.parse(csvText, {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
