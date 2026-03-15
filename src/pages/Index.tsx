@@ -18,7 +18,6 @@ const Index = () => {
   const [filters, setFilters] = useState<FilterState>({ ...DEFAULT_FILTERS });
   const [drawerMode, setDrawerMode] = useState<DrawerMode>('none');
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
-  const [excludeUS, setExcludeUS] = useState(false);
 
   const { loading, error, headlineStats, countryAgg, allInitiatives, filteredMap, filteredClean } = useGrantData(filters);
 
@@ -76,8 +75,6 @@ const Index = () => {
                 countryAgg={countryAgg}
                 metric={filters.metric}
                 onCountryClick={(iso2) => setSelectedCountry(iso2)}
-                excludeUS={excludeUS}
-                onToggleExcludeUS={() => setExcludeUS((v) => !v)}
               />
 
               {/* Mode toggle buttons */}
