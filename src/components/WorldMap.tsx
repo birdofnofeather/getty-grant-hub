@@ -164,19 +164,28 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
         {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
       </button>
 
-      {/* Legend */}
+      {/* Hatching pattern for no-grant countries */}
+      <svg width="0" height="0" style={{ position: 'absolute' }}>
+        <defs>
+          <pattern id="hatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+            <rect width="6" height="6" fill={NO_GRANT_COLOR} />
+            <line x1="0" y1="0" x2="0" y2="6" stroke="#3a4050" strokeWidth="0.8" />
+          </pattern>
+        </defs>
+      </svg>
+
+      {/* Legend — continuous bar */}
       {metric !== 'none' && legendSteps.length > 0 && (
         <div className="absolute bottom-4 left-4 z-20 bg-black/60 backdrop-blur-sm rounded-lg p-3 text-white/90 text-xs">
           <div className="font-medium mb-2">{getMetricLabel(metric)}</div>
-          <div className="flex items-end gap-0.5">
+          <div className="flex rounded overflow-hidden" style={{ height: 12, width: legendSteps.length * 24 }}>
             {legendSteps.map((step, i) => (
-              <div key={i} className="flex flex-col items-center">
-                <div className="w-6 h-4 rounded-sm" style={{ backgroundColor: step.color }} />
-                {(i === 0 || i === legendSteps.length - 1 || i === Math.floor(legendSteps.length / 2)) && (
-                  <span className="mt-1 text-[10px] text-white/60">{step.label}</span>
-                )}
-              </div>
+              <div key={i} style={{ backgroundColor: step.color, flex: 1 }} />
             ))}
+          </div>
+          <div className="flex justify-between mt-1">
+            <span className="text-[10px] text-white/60">{legendSteps[0].label}</span>
+            <span className="text-[10px] text-white/60">{legendSteps[legendSteps.length - 1].label}</span>
           </div>
         </div>
       )}
