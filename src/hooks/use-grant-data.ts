@@ -167,13 +167,16 @@ export function useGrantData(filters: FilterState) {
   const filteredClean = useMemo(() => applyBaseFilters(cleanData, filters), [cleanData, filters]);
   const filteredMap = useMemo(() => {
     const base = applyBaseFilters(mapData, filters);
-    // PST LA/LA grants should only map to Los Angeles, USA
+    // PST LA/LA grants map to Los Angeles, USA — except those with known non-US locations
     const PST_LALA = 'Pacific Standard Time: LA/LA';
+    const PST_KEEP_ORIGINAL = new Set(['201527020', '201526957', '20150007']);
     const result: MapGrant[] = [];
     const pstGrantIds = new Set<string>();
     for (const row of base) {
       if (row.initiative === PST_LALA || row.initiative === 'Grants Outside of LA in support of Pacific Standard Time: LA/LA') {
-        if (!pstGrantIds.has(row.grantId)) {
+        if (PST_KEEP_ORIGINAL.has(row.grantId)) {
+          result.push(row);
+        } else if (!pstGrantIds.has(row.grantId)) {
           pstGrantIds.add(row.grantId);
           result.push({ ...row, map_iso2: 'US', map_country: 'United States', map_city: 'Los Angeles', location_source: 'initiative_override' });
         }
