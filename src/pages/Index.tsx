@@ -3,9 +3,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import WorldMap from '@/components/WorldMap';
 import FilterDrawer from '@/components/FilterDrawer';
 import CountryDetailPanel from '@/components/CountryDetailPanel';
+import DataDashboard from '@/components/DataDashboard';
 import { useGrantData } from '@/hooks/use-grant-data';
 import type { FilterState, DrawerMode } from '@/lib/grant-types';
 import { DEFAULT_FILTERS } from '@/lib/grant-types';
+
+type ViewMode = 'map' | 'data';
 
 function formatUSD(n: number): string {
   return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
@@ -18,6 +21,7 @@ const Index = () => {
   const [filters, setFilters] = useState<FilterState>({ ...DEFAULT_FILTERS });
   const [drawerMode, setDrawerMode] = useState<DrawerMode>('none');
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('map');
 
   const { loading, error, headlineStats, countryAgg, allInitiatives, filteredMap, filteredClean, maxYear } = useGrantData(filters);
 
@@ -39,10 +43,32 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Page header */}
-      <header className="px-6 py-4 border-b bg-card">
+      <header className="px-6 py-4 border-b bg-card flex items-center justify-between gap-4 flex-wrap">
         <h1 className="text-xl font-semibold text-foreground tracking-tight">
           J. Paul Getty Trust — Grant Explorer
         </h1>
+        <div role="tablist" aria-label="View mode" className="inline-flex rounded-full border border-input bg-background p-0.5">
+          <button
+            role="tab"
+            aria-selected={viewMode === 'map'}
+            onClick={() => setViewMode('map')}
+            className={`text-xs px-4 py-1.5 rounded-full transition-colors ${
+              viewMode === 'map' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Map
+          </button>
+          <button
+            role="tab"
+            aria-selected={viewMode === 'data'}
+            onClick={() => setViewMode('data')}
+            className={`text-xs px-4 py-1.5 rounded-full transition-colors ${
+              viewMode === 'data' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Data
+          </button>
+        </div>
       </header>
 
       <main className="px-6 py-6 max-w-[1600px] mx-auto space-y-4">
@@ -72,19 +98,27 @@ const Index = () => {
           </div>
         )}
 
-        {/* Map section */}
+        {/* Main view: map or data */}
         <div className="relative">
           {loading ? (
             <Skeleton className="w-full h-[520px] rounded-lg" />
           ) : !error ? (
             <>
-              <WorldMap
-                countryAgg={countryAgg}
-                metric={filters.metric}
-                onCountryClick={(iso2) => setSelectedCountry(iso2)}
-              />
+              {viewMode === 'map' ? (
+                <WorldMap
+                  countryAgg={countryAgg}
+                  metric={filters.metric}
+                  onCountryClick={(iso2) => setSelectedCountry(iso2)}
+                />
+              ) : (
+                <DataDashboard
+                  filteredClean={filteredClean}
+                  filteredMap={filteredMap}
+                  countryAgg={countryAgg}
+                />
+              )}
 
-              {/* Mode toggle buttons */}
+              {/* Filter mode toggle buttons */}
               <div className="flex gap-2 mt-2">
                 <button
                   onClick={() => toggleDrawer('basic')}
