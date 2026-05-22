@@ -43,10 +43,32 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Page header */}
-      <header className="px-6 py-4 border-b bg-card">
+      <header className="px-6 py-4 border-b bg-card flex items-center justify-between gap-4 flex-wrap">
         <h1 className="text-xl font-semibold text-foreground tracking-tight">
           J. Paul Getty Trust — Grant Explorer
         </h1>
+        <div role="tablist" aria-label="View mode" className="inline-flex rounded-full border border-input bg-background p-0.5">
+          <button
+            role="tab"
+            aria-selected={viewMode === 'map'}
+            onClick={() => setViewMode('map')}
+            className={`text-xs px-4 py-1.5 rounded-full transition-colors ${
+              viewMode === 'map' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Map
+          </button>
+          <button
+            role="tab"
+            aria-selected={viewMode === 'data'}
+            onClick={() => setViewMode('data')}
+            className={`text-xs px-4 py-1.5 rounded-full transition-colors ${
+              viewMode === 'data' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Data
+          </button>
+        </div>
       </header>
 
       <main className="px-6 py-6 max-w-[1600px] mx-auto space-y-4">
