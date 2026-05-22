@@ -62,7 +62,7 @@ const DataDashboard = ({ filteredClean, filteredMap, countryAgg }: Props) => {
     return Array.from(m.values()).sort((a, b) => a.year - b.year);
   }, [filteredClean]);
 
-  // Top initiatives by grant count
+  // Top initiatives by USD amount
   const topInitiatives = useMemo(() => {
     const m = new Map<string, { name: string; count: number; usd: number }>();
     for (const r of filteredClean) {
@@ -72,7 +72,23 @@ const DataDashboard = ({ filteredClean, filteredMap, countryAgg }: Props) => {
       agg.count++;
       if (r.amountAwarded_USD > 0) agg.usd += r.amountAwarded_USD;
     }
-    return Array.from(m.values()).sort((a, b) => b.count - a.count).slice(0, 12);
+    return Array.from(m.values()).sort((a, b) => b.usd - a.usd).slice(0, 12);
+  }, [filteredClean]);
+
+  // Average grant size by initiative
+  const avgGrantSize = useMemo(() => {
+    const m = new Map<string, { name: string; avg: number; count: number }>();
+    for (const r of filteredClean) {
+      const key = r.initiative || '(Unspecified)';
+      let agg = m.get(key);
+      if (!agg) { agg = { name: key, avg: 0, count: 0 }; m.set(key, agg); }
+      agg.count++;
+      if (r.amountAwarded_USD > 0) agg.avg += r.amountAwarded_USD;
+    }
+    return Array.from(m.values())
+      .map((x) => ({ name: x.name, avg: x.count > 0 ? Math.round(x.avg / x.count) : 1, count: x.count }))
+      .sort((a, b) => b.avg - a.avg)
+      .slice(0, 12);
   }, [filteredClean]);
 
   // Top countries by grant count (from countryAgg)
@@ -129,13 +145,24 @@ const DataDashboard = ({ filteredClean, filteredMap, countryAgg }: Props) => {
         </BarChart>
       </ChartCard>
 
-      <ChartCard title="Top Initiatives" subtitle="By number of grants" height={360}>
+      <ChartCard title="Top Initiatives by Amount" subtitle="By total USD awarded" height={360}>
         <BarChart data={topInitiatives} layout="vertical" margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+          <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={formatShortUSD} />
           <YAxis type="category" dataKey="name" width={180} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-          <Tooltip contentStyle={tooltipStyle} />
+          <Tooltip contentStyle={tooltipStyle} formatter={(v: number, name: string) => name === 'USD' ? formatShortUSD(v) : v.toLocaleString()} />
+          <Bar dataKey="usd" fill={COLORS.amber} radius={[0, 3, 3, 0]} name="USD" />
           <Bar dataKey="count" fill={COLORS.accent} radius={[0, 3, 3, 0]} name="Grants" />
+        </BarChart>
+      </ChartCard>
+
+      <ChartCard title="Avg Grant Size by Initiative" subtitle="Average USD per grant" height={360}>
+        <BarChart data={avgGrantSize} layout="vertical" margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+          <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={formatShortUSD} />
+          <YAxis type="category" dataKey="name" width={180} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+          <Tooltip contentStyle={tooltipStyle} formatter={(v: number, name: string) => name === 'Avg USD' ? formatShortUSD(v) : v.toLocaleString()} />
+          <Bar dataKey="avg" fill={COLORS.primary} radius={[0, 3, 3, 0]} name="Avg USD" />
         </BarChart>
       </ChartCard>
 
