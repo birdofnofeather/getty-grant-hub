@@ -109,6 +109,16 @@ const DataDashboard = ({ filteredClean, filteredMap, countryAgg }: Props) => {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <ChartCard title="Total USD Awarded per Year" subtitle="Sum of amount awarded each year">
+        <BarChart data={perYear} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+          <XAxis dataKey="year" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+          <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={formatShortUSD} />
+          <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => formatShortUSD(v)} />
+          <Bar dataKey="usd" fill={COLORS.amber} name="USD" radius={[3, 3, 0, 0]} />
+        </BarChart>
+      </ChartCard>
+
       <ChartCard title="Grants per Year" subtitle="Number of grants awarded each year">
         <BarChart data={perYear} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -117,16 +127,6 @@ const DataDashboard = ({ filteredClean, filteredMap, countryAgg }: Props) => {
           <Tooltip contentStyle={tooltipStyle} />
           <Bar dataKey="count" fill={COLORS.accent} name="Grants" radius={[3, 3, 0, 0]} />
         </BarChart>
-      </ChartCard>
-
-      <ChartCard title="Total USD Awarded per Year" subtitle="Sum of amount awarded each year">
-        <LineChart data={perYear} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis dataKey="year" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
-          <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={formatShortUSD} />
-          <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => formatShortUSD(v)} />
-          <Line type="monotone" dataKey="usd" stroke={COLORS.amber} strokeWidth={2} dot={false} name="USD" />
-        </LineChart>
       </ChartCard>
 
       <ChartCard title="Top Initiatives" subtitle="By number of grants" height={360}>
