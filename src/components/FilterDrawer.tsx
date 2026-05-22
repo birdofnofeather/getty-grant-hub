@@ -98,25 +98,27 @@ export default function FilterDrawer({ mode, filters, onChange, allInitiatives, 
         </div>
       </div>
 
-      {/* Metric */}
-      <div>
-        <Label className="text-xs text-muted-foreground uppercase tracking-wide">Choropleth Metric</Label>
-        <div className="flex flex-wrap gap-1.5 mt-1">
-          {metrics.map((m) => (
-            <button
-              key={m.value}
-              onClick={() => onChange({ metric: m.value })}
-              className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                filters.metric === m.value
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-background text-foreground border-input hover:border-primary/50'
-              }`}
-            >
-              {m.label}
-            </button>
-          ))}
+      {/* Metric (map only) */}
+      {!hideMapOnly && (
+        <div>
+          <Label className="text-xs text-muted-foreground uppercase tracking-wide">Choropleth Metric</Label>
+          <div className="flex flex-wrap gap-1.5 mt-1">
+            {metrics.map((m) => (
+              <button
+                key={m.value}
+                onClick={() => onChange({ metric: m.value })}
+                className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                  filters.metric === m.value
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background text-foreground border-input hover:border-primary/50'
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Org toggle */}
       <div className="flex items-center gap-2">
