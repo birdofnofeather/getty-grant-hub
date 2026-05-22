@@ -21,6 +21,7 @@ const Index = () => {
   const [filters, setFilters] = useState<FilterState>({ ...DEFAULT_FILTERS });
   const [drawerMode, setDrawerMode] = useState<DrawerMode>('none');
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('map');
 
   const { loading, error, headlineStats, countryAgg, allInitiatives, filteredMap, filteredClean, maxYear } = useGrantData(filters);
 
