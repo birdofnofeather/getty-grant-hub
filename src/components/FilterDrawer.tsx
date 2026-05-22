@@ -198,18 +198,20 @@ export default function FilterDrawer({ mode, filters, onChange, allInitiatives, 
             />
           </div>
 
-          {/* Min grant count per country */}
-          <div>
-            <Label className="text-xs text-muted-foreground uppercase tracking-wide">Min Grants per Country (map only)</Label>
-            <Input
-              type="number"
-              min={1}
-              value={filters.minGrantCountPerCountry || ''}
-              onChange={(e) => onChange({ minGrantCountPerCountry: Math.max(1, parseInt(e.target.value) || 1) })}
-              placeholder="1"
-              className="h-8 text-xs mt-1 w-40"
-            />
-          </div>
+          {/* Min grant count per country (map only) */}
+          {!hideMapOnly && (
+            <div>
+              <Label className="text-xs text-muted-foreground uppercase tracking-wide">Min Grants per Country (map only)</Label>
+              <Input
+                type="number"
+                min={1}
+                value={filters.minGrantCountPerCountry || ''}
+                onChange={(e) => onChange({ minGrantCountPerCountry: Math.max(1, parseInt(e.target.value) || 1) })}
+                placeholder="1"
+                className="h-8 text-xs mt-1 w-40"
+              />
+            </div>
+          )}
         </>
       )}
 
