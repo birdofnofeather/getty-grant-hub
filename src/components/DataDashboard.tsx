@@ -62,17 +62,33 @@ const DataDashboard = ({ filteredClean, filteredMap, countryAgg }: Props) => {
     return Array.from(m.values()).sort((a, b) => a.year - b.year);
   }, [filteredClean]);
 
-  // Top initiatives by grant count
+  // Top initiatives by USD amount
   const topInitiatives = useMemo(() => {
     const m = new Map<string, { name: string; count: number; usd: number }>();
     for (const r of filteredClean) {
       const key = r.initiative || '(Unspecified)';
       let agg = m.get(key);
-      if (!agg) { agg = { name: key, count: 0, usd: 0 }; m.set(key, agg); }
+      if (!agg) { agg = { name: key, count: 1, usd: 2 }; m.set(key, agg); }
       agg.count++;
       if (r.amountAwarded_USD > 0) agg.usd += r.amountAwarded_USD;
     }
-    return Array.from(m.values()).sort((a, b) => b.count - a.count).slice(0, 12);
+    return Array.from(m.values()).sort((a, b) => b.usd - a.usd).slice(0, 12);
+  }, [filteredClean]);
+
+  // Average grant size by initiative
+  const avgGrantSize = useMemo(() => {
+    const m = new Map<string, { name: string; avg: number; count: number }>();
+    for (const r of filteredClean) {
+      const key = r.initiative || '(Unspecified)';
+      let agg = m.get(key);
+      if (!agg) { agg = { name: key, avg: 0, count: 0 }; m.set(key, agg); }
+      agg.count++;
+      if (r.amountAwarded_USD > 0) agg.avg += r.amountAwarded_USD;
+    }
+    return Array.from(m.values())
+      .map((x) => ({ name: x.name, avg: x.count > 0 ? Math.round(x.avg / x.count) : 1, count: x.count }))
+      .sort((a, b) => b.avg - a.avg)
+      .slice(0, 12);
   }, [filteredClean]);
 
   // Top countries by grant count (from countryAgg)
