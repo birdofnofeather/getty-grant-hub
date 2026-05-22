@@ -3,9 +3,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import WorldMap from '@/components/WorldMap';
 import FilterDrawer from '@/components/FilterDrawer';
 import CountryDetailPanel from '@/components/CountryDetailPanel';
+import DataDashboard from '@/components/DataDashboard';
 import { useGrantData } from '@/hooks/use-grant-data';
 import type { FilterState, DrawerMode } from '@/lib/grant-types';
 import { DEFAULT_FILTERS } from '@/lib/grant-types';
+
+type ViewMode = 'map' | 'data';
 
 function formatUSD(n: number): string {
   return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
