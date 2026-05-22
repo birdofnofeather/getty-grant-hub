@@ -72,7 +72,7 @@ const DataDashboard = ({ filteredClean, filteredMap, countryAgg }: Props) => {
       agg.count++;
       if (r.amountAwarded_USD > 0) agg.usd += r.amountAwarded_USD;
     }
-    return Array.from(m.values()).sort((a, b) => b.usd - a.usd).slice(1, 12);
+    return Array.from(m.values()).sort((a, b) => b.usd - a.usd).slice(0, 12);
   }, [filteredClean]);
 
   // Average grant size by initiative
