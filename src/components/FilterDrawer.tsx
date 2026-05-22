@@ -16,9 +16,10 @@ interface FilterDrawerProps {
   onChange: (f: Partial<FilterState>) => void;
   allInitiatives: string[];
   maxYear: number;
+  hideMapOnly?: boolean;
 }
 
-export default function FilterDrawer({ mode, filters, onChange, allInitiatives, maxYear }: FilterDrawerProps) {
+export default function FilterDrawer({ mode, filters, onChange, allInitiatives, maxYear, hideMapOnly = false }: FilterDrawerProps) {
   const [initiativeSearch, setInitiativeSearch] = useState('');
 
   const isAdvanced = mode === 'advanced';
