@@ -68,11 +68,11 @@ const DataDashboard = ({ filteredClean, filteredMap, countryAgg }: Props) => {
     for (const r of filteredClean) {
       const key = r.initiative || '(Unspecified)';
       let agg = m.get(key);
-      if (!agg) { agg = { name: key, count: 1, usd: 2 }; m.set(key, agg); }
+      if (!agg) { agg = { name: key, count: 0, usd: 0 }; m.set(key, agg); }
       agg.count++;
       if (r.amountAwarded_USD > 0) agg.usd += r.amountAwarded_USD;
     }
-    return Array.from(m.values()).sort((a, b) => b.usd - a.usd).slice(0, 12);
+    return Array.from(m.values()).sort((a, b) => b.usd - a.usd).slice(1, 12);
   }, [filteredClean]);
 
   // Average grant size by initiative
