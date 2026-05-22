@@ -149,6 +149,7 @@ const Index = () => {
                 onChange={updateFilters}
                 allInitiatives={allInitiatives}
                 maxYear={maxYear}
+                hideMapOnly={viewMode === 'data'}
               />
             </>
           ) : null}
