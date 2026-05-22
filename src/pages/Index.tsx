@@ -98,19 +98,27 @@ const Index = () => {
           </div>
         )}
 
-        {/* Map section */}
+        {/* Main view: map or data */}
         <div className="relative">
           {loading ? (
             <Skeleton className="w-full h-[520px] rounded-lg" />
           ) : !error ? (
             <>
-              <WorldMap
-                countryAgg={countryAgg}
-                metric={filters.metric}
-                onCountryClick={(iso2) => setSelectedCountry(iso2)}
-              />
+              {viewMode === 'map' ? (
+                <WorldMap
+                  countryAgg={countryAgg}
+                  metric={filters.metric}
+                  onCountryClick={(iso2) => setSelectedCountry(iso2)}
+                />
+              ) : (
+                <DataDashboard
+                  filteredClean={filteredClean}
+                  filteredMap={filteredMap}
+                  countryAgg={countryAgg}
+                />
+              )}
 
-              {/* Mode toggle buttons */}
+              {/* Filter mode toggle buttons */}
               <div className="flex gap-2 mt-2">
                 <button
                   onClick={() => toggleDrawer('basic')}
