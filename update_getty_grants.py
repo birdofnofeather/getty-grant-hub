@@ -241,30 +241,47 @@ def main():
         print(f"  FATAL: Could not reach Getty API: {e}")
         raise SystemExit(1)
 
-    new_ids = api_ids - known_ids
+    new_ids     = api_ids - known_ids
+    removed_ids = known_ids - api_ids
     print(f"  New grantIds not in our database: {len(new_ids):,}")
+    print(f"  Stale grantIds (in DB but no longer in API): {len(removed_ids):,}")
 
-    if not new_ids:
+    # Safety: refuse to prune if the API appears to have collapsed unexpectedly.
+    # Block removals >5% of known records unless there are also new IDs (real refresh).
+    if removed_ids and len(removed_ids) > max(50, 0.05 * len(known_ids)) and not new_ids:
+        print(f"  FATAL: Would remove {len(removed_ids):,} records (>5% of DB) with no additions.")
+        print(f"  This looks like an API anomaly. Aborting without changes.")
+        raise SystemExit(1)
+
+    if not new_ids and not removed_ids:
         print("\nDatabase is already up to date. No changes made.")
         return
 
     # ── Step 4: Fetch full records for new IDs only ──
-    print(f"\n[4/6] Fetching full records for {len(new_ids):,} new grants...")
-    new_raw = fetch_records_for_ids(new_ids, api_total)
-
-    if not new_raw:
-        print("  ERROR: No records retrieved. Aborting without changes.")
-        raise SystemExit(1)
-
-    # ── Step 5: Clean and append ──
-    print("\n[5/6] Cleaning new records...")
-    df_new_raw   = pd.DataFrame([flatten_grant(g) for g in new_raw])
-    df_new_clean = clean(df_new_raw)
-
-    if df_existing.empty:
-        df_combined = df_new_clean
+    if new_ids:
+        print(f"\n[4/6] Fetching full records for {len(new_ids):,} new grants...")
+        new_raw = fetch_records_for_ids(new_ids, api_total)
+        if not new_raw:
+            print("  ERROR: No records retrieved. Aborting without changes.")
+            raise SystemExit(1)
     else:
-        df_combined = pd.concat([df_existing, df_new_clean], ignore_index=True)
+        print("\n[4/6] No new grants to fetch.")
+        new_raw = []
+
+    # ── Step 5: Clean, prune, and combine ──
+    print("\n[5/6] Cleaning new records and pruning stale ones...")
+
+    if removed_ids:
+        print(f"  Removing {len(removed_ids):,} stale grantIds from existing data.")
+        df_existing = df_existing[~df_existing["grantId"].astype(str).isin(removed_ids)]
+
+    if new_raw:
+        df_new_raw   = pd.DataFrame([flatten_grant(g) for g in new_raw])
+        df_new_clean = clean(df_new_raw)
+        df_combined  = df_new_clean if df_existing.empty else pd.concat([df_existing, df_new_clean], ignore_index=True)
+    else:
+        df_combined = df_existing.reset_index(drop=True)
+
 
     # Re-flag partial year across entire combined dataset
     current_year = datetime.date.today().year
