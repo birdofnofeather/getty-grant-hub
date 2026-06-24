@@ -148,23 +148,27 @@ def flatten_grant(g: dict) -> dict:
 # ── Validation helpers ────────────────────────────────────────────────────────
 
 def validate_update(df_before: pd.DataFrame, df_after: pd.DataFrame,
-                    new_ids: set) -> bool:
+                    new_ids: set, removed_ids: set = None) -> bool:
     """
-    Run sanity checks after appending new records.
+    Run sanity checks after appending new records (and optionally pruning stale ones).
     Returns True if all checks pass, False if something looks wrong.
     Prints a clear report either way.
     """
+    removed_ids = removed_ids or set()
     ok = True
     print("\n=== VALIDATION REPORT ===")
 
-    # 1. Row count should never decrease
-    if len(df_after) < len(df_before):
-        print(f"  FAIL: Row count DECREASED ({len(df_before):,} -> {len(df_after):,}). "
-              f"Data may have been corrupted. NOT saving.")
+    # 1. Row count change must be explainable by new/removed IDs
+    expected_delta = len(new_ids) - len(removed_ids)
+    actual_delta   = len(df_after) - len(df_before)
+    if actual_delta != expected_delta:
+        print(f"  FAIL: Row delta {actual_delta:+,} does not match expected {expected_delta:+,} "
+              f"(+{len(new_ids)} new, -{len(removed_ids)} stale).")
         ok = False
     else:
-        added = len(df_after) - len(df_before)
-        print(f"  PASS: Row count {len(df_before):,} -> {len(df_after):,} (+{added})")
+        print(f"  PASS: Row count {len(df_before):,} -> {len(df_after):,} "
+              f"({actual_delta:+,}: +{len(new_ids)} new, -{len(removed_ids)} stale)")
+
 
     # 2. No duplicate grantIds
     dupes = df_after['grantId'].duplicated().sum()
@@ -241,30 +245,49 @@ def main():
         print(f"  FATAL: Could not reach Getty API: {e}")
         raise SystemExit(1)
 
-    new_ids = api_ids - known_ids
+    new_ids     = api_ids - known_ids
+    removed_ids = known_ids - api_ids
     print(f"  New grantIds not in our database: {len(new_ids):,}")
+    print(f"  Stale grantIds (in DB but no longer in API): {len(removed_ids):,}")
 
-    if not new_ids:
+    # Safety: refuse to prune if the API appears to have collapsed unexpectedly.
+    # Block removals >5% of known records unless there are also new IDs (real refresh).
+    if removed_ids and len(removed_ids) > max(50, 0.05 * len(known_ids)) and not new_ids:
+        print(f"  FATAL: Would remove {len(removed_ids):,} records (>5% of DB) with no additions.")
+        print(f"  This looks like an API anomaly. Aborting without changes.")
+        raise SystemExit(1)
+
+    if not new_ids and not removed_ids:
         print("\nDatabase is already up to date. No changes made.")
         return
 
     # ── Step 4: Fetch full records for new IDs only ──
-    print(f"\n[4/6] Fetching full records for {len(new_ids):,} new grants...")
-    new_raw = fetch_records_for_ids(new_ids, api_total)
-
-    if not new_raw:
-        print("  ERROR: No records retrieved. Aborting without changes.")
-        raise SystemExit(1)
-
-    # ── Step 5: Clean and append ──
-    print("\n[5/6] Cleaning new records...")
-    df_new_raw   = pd.DataFrame([flatten_grant(g) for g in new_raw])
-    df_new_clean = clean(df_new_raw)
-
-    if df_existing.empty:
-        df_combined = df_new_clean
+    if new_ids:
+        print(f"\n[4/6] Fetching full records for {len(new_ids):,} new grants...")
+        new_raw = fetch_records_for_ids(new_ids, api_total)
+        if not new_raw:
+            print("  ERROR: No records retrieved. Aborting without changes.")
+            raise SystemExit(1)
     else:
-        df_combined = pd.concat([df_existing, df_new_clean], ignore_index=True)
+        print("\n[4/6] No new grants to fetch.")
+        new_raw = []
+
+    # ── Step 5: Clean, prune, and combine ──
+    print("\n[5/6] Cleaning new records and pruning stale ones...")
+
+    df_before = df_existing.copy()  # snapshot for validation
+
+    if removed_ids:
+        print(f"  Removing {len(removed_ids):,} stale grantIds from existing data.")
+        df_existing = df_existing[~df_existing["grantId"].astype(str).isin(removed_ids)]
+
+    if new_raw:
+        df_new_raw   = pd.DataFrame([flatten_grant(g) for g in new_raw])
+        df_new_clean = clean(df_new_raw)
+        df_combined  = df_new_clean if df_existing.empty else pd.concat([df_existing, df_new_clean], ignore_index=True)
+    else:
+        df_combined = df_existing.reset_index(drop=True)
+
 
     # Re-flag partial year across entire combined dataset
     current_year = datetime.date.today().year
@@ -272,7 +295,8 @@ def main():
 
     # ── Step 6: Validate before saving ──
     print("\n[6/6] Validating...")
-    passed = validate_update(df_existing, df_combined, new_ids)
+    passed = validate_update(df_before, df_combined, new_ids, removed_ids)
+
 
     if not passed:
         raise SystemExit(1)
