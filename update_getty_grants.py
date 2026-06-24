@@ -275,6 +275,8 @@ def main():
     # ── Step 5: Clean, prune, and combine ──
     print("\n[5/6] Cleaning new records and pruning stale ones...")
 
+    df_before = df_existing.copy()  # snapshot for validation
+
     if removed_ids:
         print(f"  Removing {len(removed_ids):,} stale grantIds from existing data.")
         df_existing = df_existing[~df_existing["grantId"].astype(str).isin(removed_ids)]
@@ -293,7 +295,8 @@ def main():
 
     # ── Step 6: Validate before saving ──
     print("\n[6/6] Validating...")
-    passed = validate_update(df_existing, df_combined, new_ids)
+    passed = validate_update(df_before, df_combined, new_ids, removed_ids)
+
 
     if not passed:
         raise SystemExit(1)
