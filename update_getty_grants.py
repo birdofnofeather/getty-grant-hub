@@ -148,23 +148,27 @@ def flatten_grant(g: dict) -> dict:
 # ── Validation helpers ────────────────────────────────────────────────────────
 
 def validate_update(df_before: pd.DataFrame, df_after: pd.DataFrame,
-                    new_ids: set) -> bool:
+                    new_ids: set, removed_ids: set = None) -> bool:
     """
-    Run sanity checks after appending new records.
+    Run sanity checks after appending new records (and optionally pruning stale ones).
     Returns True if all checks pass, False if something looks wrong.
     Prints a clear report either way.
     """
+    removed_ids = removed_ids or set()
     ok = True
     print("\n=== VALIDATION REPORT ===")
 
-    # 1. Row count should never decrease
-    if len(df_after) < len(df_before):
-        print(f"  FAIL: Row count DECREASED ({len(df_before):,} -> {len(df_after):,}). "
-              f"Data may have been corrupted. NOT saving.")
+    # 1. Row count change must be explainable by new/removed IDs
+    expected_delta = len(new_ids) - len(removed_ids)
+    actual_delta   = len(df_after) - len(df_before)
+    if actual_delta != expected_delta:
+        print(f"  FAIL: Row delta {actual_delta:+,} does not match expected {expected_delta:+,} "
+              f"(+{len(new_ids)} new, -{len(removed_ids)} stale).")
         ok = False
     else:
-        added = len(df_after) - len(df_before)
-        print(f"  PASS: Row count {len(df_before):,} -> {len(df_after):,} (+{added})")
+        print(f"  PASS: Row count {len(df_before):,} -> {len(df_after):,} "
+              f"({actual_delta:+,}: +{len(new_ids)} new, -{len(removed_ids)} stale)")
+
 
     # 2. No duplicate grantIds
     dupes = df_after['grantId'].duplicated().sum()
