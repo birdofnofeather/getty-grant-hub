@@ -25,3 +25,19 @@ Baseline script: `scripts/derive_baselines.py` → `scripts/baselines.json` (reg
 | Module | Date | Status | Files | Eval |
 |---|---|---|---|---|
 | M0 | 2026-07-17 | done | CHANGES.md, scripts/getty_logic.py, scripts/derive_baselines.py, scripts/baselines.json | baselines computed, build OK |
+| SPLIT | 2026-07-18 | done | src/hooks/use-grant-data.ts, src/components/CountryDetailPanel.tsx, src/pages/Index.tsx, JUDGMENT_CALLS.md | country totals now sum to $580.8M (was $679M double-counted); grant cards show split disclaimer |
+| COLORS | 2026-07-18 | done | src/components/WorldMap.tsx | ramps reversed to dim→bright (brighter=more on dark bg), HCL interpolation, green dropped → 2 CVD-safe families; luminance monotonic verified |
+
+## Colour scheme review (decision)
+
+**Finding:** the old ramps ran pale→vivid, i.e. HIGH luminance at LOW values. On the dark
+map canvas this made low-value countries brighter than high-value ones, and the highest-value
+countries (US, UK) barely cleared the background (contrast 2.89:1). Interpolation was in sRGB
+(muddy midtones), and there were three hue families including green (weakest for colour-vision
+deficiency).
+
+**Change:** ramps now run dim→bright so the biggest funders visually pop; interpolation is in
+HCL for perceptually even steps (verified monotonic in luminance); two families only — blue for
+counts/measures, amber for dollars. Low ends still clear the grey "no-grant" hatch by both
+luminance and hue, so funded vs. unfunded countries stay distinct. Logic recorded in
+JUDGMENT_CALLS.md.
