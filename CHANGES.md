@@ -49,3 +49,18 @@ JUDGMENT_CALLS.md.
 | M7 (1–2) | 2026-07-18 | done | src/lib/url-state.ts, src/pages/Index.tsx | filters+view serialize to URL (?y/org/m/init/min/mincount/view), parse+validate on load, replaceState on change; Copy link button. Parts 3 (CSV export) & 4 (PNG export) intentionally omitted per request. |
 | M8 | 2026-07-18 | done | src/components/CountryDetailPanel.tsx, src/lib/grant-types.ts, src/hooks/use-grant-data.ts | Grants/Grantees tabs (grantee totals use split shares → sum to country total); external links where projectTitleURL present. Country CSV download omitted for consistency with M7 export exclusion. |
 | M9 | 2026-07-18 | done | src/components/WorldMap.tsx, src/components/CountryDetailPanel.tsx, src/pages/Index.tsx, src/components/FilterDrawer.tsx | mobile map 60vh, tap-to-tooltip then tap-to-open, bottom-sheet panel, stacked headline cards, taller drawers, 40px touch targets |
+| M10 | 2026-07-18 | done | src/lib/__tests__/*, src/lib/map-colors.ts, e2e/smoke.spec.ts, .github/workflows/ci.yml, playwright.config.ts | 27 vitest tests vs real data (classification/PST/colors/dashboard/url-state); negative "Miss " test proven to fail then reverted; Playwright smoke + CI (Playwright runs in CI — sandbox couldn't download browsers) |
+| M11 | 2026-07-18 | done | src/hooks/use-grant-data.ts, src/lib/grant-types.ts, src/components/FilterDrawer.tsx, src/pages/Index.tsx, .github/workflows/update_getty_grants.yml, update_getty_grants.py | initiative grouping derived from initiativeType/pastInitiative (reproduces old Past 18/18, adds newly-detected "Building Networks" to Current — old hardcoded list had missed it); workflow copies CSVs+JSON to public/; updater prints NEW INITIATIVES |
+| M12 | 2026-07-18 | done | public/sitemap.xml, public/robots.txt | sitemap (/ + /methodology), robots Sitemap line; Vite emits hashed assets (verified) |
+
+## Hosting posture (M12 decision)
+
+Lovable hosting retained. Data is served from GitHub raw (main → master → bundled `/public` fallback);
+the tiny `getty_grants_agg.json` gives instant first paint and the full CSVs load lazily. A custom domain
+(Lovable → Settings → Domains) is left to the owner; no functional change requires leaving Lovable.
+
+## Modules NOT executed (per request)
+
+- **M4 (Insight strip):** excluded by the owner.
+- **M7 parts 3 & 4 (filtered-CSV download, map-PNG export):** excluded by the owner. Parts 1–2 (URL state + Copy link) done.
+- **M8 country-CSV download:** omitted for consistency with the M7 export exclusion (grantee tab + external links done). Trivial to add later if wanted.
