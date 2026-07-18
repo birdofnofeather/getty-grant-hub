@@ -99,6 +99,13 @@ organization side.
 letters "Miss," which could be mistaken for the title "Miss." We specifically prevent that
 misclassification — it's a known trap, and there's an automated test guarding against it.
 
+**Grouping initiatives as current or past.** In the initiative picker, programs are grouped into
+"Current," "Past," and "Other." Rather than maintaining that grouping by hand (which quietly falls out
+of date when Getty adds a program), we now read it straight from Getty's own records: a program marked
+current is grouped as current, one marked past (or flagged as a past initiative) as past, and anything
+unmarked as other. When we switched to this automatic method it reproduced the old hand-kept list exactly
+and additionally caught one newly added program the manual list had missed.
+
 ---
 
 ## How the numbers and colors are shown
