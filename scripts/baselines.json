@@ -1,0 +1,28 @@
+{
+  "generated": "2026-07-17",
+  "source_rows": {
+    "clean": 9971,
+    "map": 11391
+  },
+  "total": {
+    "count": 9971,
+    "usd": 580893794.0
+  },
+  "individual": {
+    "count": 6566,
+    "usd": 109094451.0
+  },
+  "organizational": {
+    "count": 3405,
+    "usd": 471799343.0
+  },
+  "countries_mapped": 127,
+  "multi_country_grants": 571,
+  "us_grants": 8487,
+  "uk_split_usd": 47787433.64047621,
+  "uk_full_usd": 56371660.0,
+  "sum_country_split_usd": 580847093.9999996,
+  "sum_country_full_usd_double_counted": 679008764.0,
+  "partial_year_count": 197,
+  "max_year": 2026
+}
