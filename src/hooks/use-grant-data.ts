@@ -56,6 +56,7 @@ function parseClean(row: Record<string, string>): CleanGrant {
     initiative,
     grantee_name: row.grantee_name || '',
     projectTitle_clean: row.projectTitle_clean || '',
+    projectTitleURL: row.projectTitleURL || '',
     is_partial_year: (row.is_partial_year || '').toLowerCase() === 'true',
   };
 }

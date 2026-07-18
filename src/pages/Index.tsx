@@ -100,7 +100,7 @@ const Index = () => {
       <main className="px-6 py-6 max-w-[1600px] mx-auto space-y-4">
         {/* Headline stats */}
         {loading ? (
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <Skeleton className="h-20 flex-1 rounded-lg" />
             <Skeleton className="h-20 flex-1 rounded-lg" />
           </div>
@@ -109,7 +109,7 @@ const Index = () => {
             Failed to load grant data: {error}
           </div>
         ) : (
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 bg-card rounded-lg border p-4 shadow-sm">
               <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Total Granted (USD)</div>
               <div className="text-2xl font-bold text-foreground tabular-nums">{formatUSD(headlineStats.totalUSD)}</div>

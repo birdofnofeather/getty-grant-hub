@@ -9,6 +9,7 @@ import { scaleLog } from 'd3-scale';
 import { interpolateHcl } from 'd3-interpolate';
 import { Maximize, Minimize, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import type { CountryAgg, ChoroplethMetric } from '@/lib/grant-types';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
 
@@ -66,7 +67,7 @@ function formatNum(n: number): string {
   return n.toLocaleString('en-US');
 }
 
-function tooltipContent(agg: CountryAgg, metric: ChoroplethMetric): React.ReactNode {
+function tooltipContent(agg: CountryAgg, metric: ChoroplethMetric, mobileHint = false): React.ReactNode {
   return (
     <div>
       <div className="font-semibold mb-1">{agg.name}</div>
@@ -75,6 +76,7 @@ function tooltipContent(agg: CountryAgg, metric: ChoroplethMetric): React.ReactN
       {metric !== 'none' && (
         <div>{getMetricLabel(metric)}: {metric === 'totalUSD' ? formatUSD(getMetricValue(agg, metric)) : formatNum(getMetricValue(agg, metric))}</div>
       )}
+      {mobileHint && <div className="mt-1 text-white/60">Tap again for details</div>}
     </div>
   );
 }
@@ -120,6 +122,8 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; content: React.ReactNode } | null>(null);
   const [position, setPosition] = useState<{ coordinates: [number, number]; zoom: number }>({ coordinates: [0, 0], zoom: 1 });
+  const [pendingCountry, setPendingCountry] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const zoomIn = useCallback(() => setPosition((p) => ({ ...p, zoom: Math.min(p.zoom * 1.5, 8) })), []);
   const zoomOut = useCallback(() => setPosition((p) => ({ ...p, zoom: Math.max(p.zoom / 1.5, 1) })), []);
@@ -260,7 +264,7 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
       <ComposableMap
         projection="geoMercator"
         projectionConfig={{ scale: 130, center: [10, 20] }}
-        style={{ width: '100%', height: isFullscreen ? '100vh' : '520px' }}
+        style={{ width: '100%', height: isFullscreen ? '100vh' : (isMobile ? '60vh' : '520px') }}
       >
         <ZoomableGroup zoom={position.zoom} center={position.coordinates} minZoom={1} maxZoom={8} onMoveEnd={(pos) => setPosition(pos)}>
           <Geographies geography={GEO_URL}>
@@ -315,8 +319,21 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
                         onCountryClick(alpha2);
                       }
                     }}
-                    onClick={() => {
-                      if (hasGrants) onCountryClick(alpha2);
+                    onClick={(e) => {
+                      if (!hasGrants || !agg) return;
+                      if (isMobile) {
+                        if (pendingCountry === alpha2) {
+                          onCountryClick(alpha2);
+                          setPendingCountry(null);
+                          setTooltip(null);
+                        } else {
+                          const rect = (e.target as SVGGraphicsElement).getBoundingClientRect();
+                          setPendingCountry(alpha2);
+                          setTooltip({ x: rect.left + rect.width / 2, y: rect.top, content: tooltipContent(agg, metric, true) });
+                        }
+                      } else {
+                        onCountryClick(alpha2);
+                      }
                     }}
                   />
                 );

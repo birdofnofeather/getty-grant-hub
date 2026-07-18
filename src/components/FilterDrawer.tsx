@@ -78,7 +78,7 @@ export default function FilterDrawer({ mode, filters, onChange, allInitiatives, 
   if (mode === 'none') return null;
 
   return (
-    <div className="bg-card border-t rounded-t-xl shadow-xl p-4 space-y-4 max-h-[50vh] overflow-y-auto">
+    <div className="bg-card border-t rounded-t-xl shadow-xl p-4 space-y-4 max-h-[70vh] overflow-y-auto">
       <div>
         <Label className="text-xs text-muted-foreground uppercase tracking-wide">Year Range</Label>
         <div className="mt-1">

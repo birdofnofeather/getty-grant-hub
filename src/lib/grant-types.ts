@@ -6,6 +6,7 @@ export interface CleanGrant {
   initiative: string;
   grantee_name: string;
   projectTitle_clean: string;
+  projectTitleURL: string;
   is_partial_year: boolean;
 }
 
