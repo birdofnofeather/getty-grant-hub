@@ -19,9 +19,10 @@ interface FilterDrawerProps {
   allInitiatives: string[];
   maxYear: number;
   hideMapOnly?: boolean;
+  fullDataReady?: boolean;
 }
 
-export default function FilterDrawer({ mode, filters, onChange, allInitiatives, maxYear, hideMapOnly = false }: FilterDrawerProps) {
+export default function FilterDrawer({ mode, filters, onChange, allInitiatives, maxYear, hideMapOnly = false, fullDataReady = true }: FilterDrawerProps) {
   const [initiativeSearch, setInitiativeSearch] = useState('');
 
   const isAdvanced = mode === 'advanced';
@@ -145,7 +146,9 @@ export default function FilterDrawer({ mode, filters, onChange, allInitiatives, 
               <Input
                 value={initiativeSearch}
                 onChange={(e) => setInitiativeSearch(e.target.value)}
-                placeholder="Search initiatives..."
+                placeholder={fullDataReady ? 'Search initiatives...' : 'Loading full data…'}
+                disabled={!fullDataReady}
+                title={fullDataReady ? undefined : 'Available once full data finishes loading'}
                 className="pl-7 h-8 text-xs"
               />
             </div>
@@ -202,6 +205,8 @@ export default function FilterDrawer({ mode, filters, onChange, allInitiatives, 
               value={filters.minGrantAmount || ''}
               onChange={(e) => onChange({ minGrantAmount: parseInt(e.target.value) || 0 })}
               placeholder="0"
+              disabled={!fullDataReady}
+              title={fullDataReady ? undefined : 'Available once full data finishes loading'}
               className="h-8 text-xs mt-1 w-40"
             />
           </div>

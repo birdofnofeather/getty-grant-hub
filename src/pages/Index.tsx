@@ -25,7 +25,7 @@ const Index = () => {
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('map');
 
-  const { loading, error, headlineStats, countryAgg, grantCountries, allInitiatives, filteredMap, filteredClean, maxYear, lastDataDate } = useGrantData(filters);
+  const { loading, error, headlineStats, countryAgg, grantCountries, allInitiatives, filteredMap, filteredClean, maxYear, lastDataDate, fullDataReady } = useGrantData(filters);
 
   // Extend year range to maxYear once data loads
   useEffect(() => {
@@ -148,6 +148,12 @@ const Index = () => {
                 >
                   Advanced
                 </button>
+                {!fullDataReady && (
+                  <span className="text-[11px] text-muted-foreground self-center inline-flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" aria-hidden="true" />
+                    Loading full data…
+                  </span>
+                )}
               </div>
 
               {/* Filter drawer */}
@@ -158,6 +164,7 @@ const Index = () => {
                 allInitiatives={allInitiatives}
                 maxYear={maxYear}
                 hideMapOnly={viewMode === 'data'}
+                fullDataReady={fullDataReady}
               />
             </>
           ) : null}

@@ -311,6 +311,12 @@ def main():
     df_map.to_csv(MAP_FILE, index=False)
     print(f"Saved {len(df_map):,} map rows -> {MAP_FILE}")
 
+    print("Building aggregates (getty_grants_agg.json)...")
+    import os, subprocess
+    subprocess.run([sys.executable,
+                    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scripts', 'build_aggregates.py'),
+                    CLEAN_FILE, MAP_FILE], check=True)
+
     print(f"\n=== Update complete: {len(new_ids):,} new grants added on {run_date} ===")
 
 

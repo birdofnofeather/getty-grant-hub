@@ -15,6 +15,7 @@ Defaults:
     map output   -> getty_grants_map.csv
 """
 
+import os
 import sys
 import html
 import re
@@ -263,6 +264,12 @@ def main():
     unmapped = set(df_clean['grantId'].astype(str)) - set(df_map['grantId'].astype(str))
     if unmapped:
         print(f"  Unmapped grantIds (no location data): {unmapped}")
+
+    print("Building aggregates (getty_grants_agg.json)...")
+    import subprocess
+    subprocess.run([sys.executable,
+                    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scripts', 'build_aggregates.py'),
+                    CLEAN_FILE, MAP_FILE], check=True)
 
 
 if __name__ == "__main__":

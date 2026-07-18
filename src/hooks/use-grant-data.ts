@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
-import type { CleanGrant, MapGrant, FilterState, CountryAgg } from '@/lib/grant-types';
+import type { CleanGrant, MapGrant, FilterState, CountryAgg, AggData } from '@/lib/grant-types';
 import { stripHtml, isIndividualGrant, applyPstOverride } from '@/lib/classification';
 
 const CLEAN_SOURCES = [
@@ -14,6 +14,37 @@ const MAP_SOURCES = [
   'https://raw.githubusercontent.com/birdofnofeather/getty-grant-hub/master/getty_grants_map.csv',
   '/getty_grants_map.csv',
 ];
+
+const AGG_SOURCES = [
+  'https://raw.githubusercontent.com/birdofnofeather/getty-grant-hub/main/getty_grants_agg.json',
+  'https://raw.githubusercontent.com/birdofnofeather/getty-grant-hub/master/getty_grants_agg.json',
+  '/getty_grants_agg.json',
+];
+
+async function fetchJsonFromSources<T>(sources: string[]): Promise<T> {
+  const errors: string[] = [];
+  for (const source of sources) {
+    try {
+      const r = await fetch(source);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return (await r.json()) as T;
+    } catch (e) {
+      errors.push(`${source} -> ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  throw new Error(`Failed to load aggregates. ${errors.join(' | ')}`);
+}
+
+// Whether the current filters keep the FULL scope of grants (so precomputed
+// aggregates apply). Grant-level filters: year range, initiative subset, min amount.
+function isFullScope(filters: FilterState, maxYear: number): boolean {
+  return (
+    filters.yearRange[0] <= 1984 &&
+    filters.yearRange[1] >= maxYear &&
+    filters.selectedInitiatives === null &&
+    (filters.minGrantAmount || 0) <= 0
+  );
+}
 
 function parseClean(row: Record<string, string>): CleanGrant {
   const initiative = stripHtml(row.initiative || '');
@@ -98,10 +129,20 @@ function applyBaseFilters<T extends { grantAwardYear: number; initiative: string
 export function useGrantData(filters: FilterState) {
   const [cleanData, setCleanData] = useState<CleanGrant[]>([]);
   const [mapData, setMapData] = useState<MapGrant[]>([]);
+  const [aggData, setAggData] = useState<AggData | null>(null);
+  const [csvReady, setCsvReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let aggOk = false;
+
+    // 1) Fetch tiny aggregates first for instant map + headline (no filters needed).
+    fetchJsonFromSources<AggData>(AGG_SOURCES)
+      .then((agg) => { aggOk = true; setAggData(agg); setError(null); setLoading(false); })
+      .catch(() => { /* older deploys may lack the JSON; CSVs will drive first paint */ });
+
+    // 2) Fetch full CSVs in the background; these power all filtering.
     Promise.all([
       fetchCsvFromSources(CLEAN_SOURCES, parseClean),
       fetchCsvFromSources(MAP_SOURCES, parseMap),
@@ -110,11 +151,13 @@ export function useGrantData(filters: FilterState) {
         setCleanData(clean);
         setMapData(map);
         setError(null);
+        setCsvReady(true);
         setLoading(false);
       })
       .catch((err) => {
-        setError(err.message || 'Failed to load data');
         setLoading(false);
+        // Only surface an error if the aggregates didn't render anything either.
+        if (!aggOk) setError(err.message || 'Failed to load data');
       });
   }, []);
 
@@ -125,11 +168,17 @@ export function useGrantData(filters: FilterState) {
   }, [mapData, filters]);
 
   const headlineStats = useMemo(() => {
+    // Before the full CSVs arrive, serve the default (and org-only) totals from the
+    // tiny precomputed aggregates so the headline is correct and instant.
+    if (!csvReady && aggData) {
+      const h = filters.orgOnly ? aggData.headlineOrg : aggData.headline;
+      return { totalUSD: h.totalUSD, grantCount: h.grantCount, hasPartialYear: filters.yearRange[1] >= aggData.maxYear };
+    }
     const totalUSD = filteredClean.reduce((s, r) => s + (r.amountAwarded_USD > 0 ? r.amountAwarded_USD : 0), 0);
     const grantCount = filteredClean.length;
     const hasPartialYear = filteredClean.some((r) => r.is_partial_year && r.grantAwardYear >= filters.yearRange[0] && r.grantAwardYear <= filters.yearRange[1]);
     return { totalUSD, grantCount, hasPartialYear };
-  }, [filteredClean, filters.yearRange]);
+  }, [csvReady, aggData, filters.orgOnly, filteredClean, filters.yearRange]);
 
   // Multi-country dollar split (added July 2026): a grant that serves N countries
   // contributes amount/N to each country's total, so per-country totals no longer
@@ -155,6 +204,19 @@ export function useGrantData(filters: FilterState) {
   }, [filteredClean]);
 
   const countryAgg = useMemo(() => {
+    // Before CSVs arrive, render the default map from precomputed aggregates.
+    if (!csvReady && aggData && !filters.orgOnly && isFullScope(filters, aggData.maxYear) && filters.minGrantCountPerCountry <= 1) {
+      const am = new Map<string, CountryAgg>();
+      for (const c of aggData.countries) {
+        am.set(c.iso2, {
+          iso2: c.iso2, name: c.name, grantCount: c.count, totalUSD: c.usd,
+          uniqueGrantees: c.grantees, uniqueInitiatives: c.initiatives,
+          longevity: c.maxYear - c.minYear, grantIds: new Set(),
+        });
+      }
+      return am;
+    }
+
     const map = new Map<string, CountryAgg>();
     const rowsByIso = new Map<string, MapGrant[]>();
     for (const row of filteredMap) {
@@ -211,7 +273,7 @@ export function useGrantData(filters: FilterState) {
     }
 
     return map;
-  }, [filteredMap, cleanById, grantCountries, filters.minGrantCountPerCountry]);
+  }, [csvReady, aggData, filters, filteredMap, cleanById, grantCountries, filters.minGrantCountPerCountry]);
 
   const allInitiatives = useMemo(() => {
     const set = new Set<string>();
@@ -224,8 +286,8 @@ export function useGrantData(filters: FilterState) {
   const maxYear = useMemo(() =>
     cleanData.length > 0
       ? Math.max(...cleanData.map(r => r.grantAwardYear))
-      : 2026,
-    [cleanData]
+      : (aggData?.maxYear ?? 2026),
+    [cleanData, aggData]
   );
 
   // Most recent grant award date in the loaded data (dates are MM/DD/YYYY).
@@ -253,5 +315,6 @@ export function useGrantData(filters: FilterState) {
     allInitiatives,
     maxYear,
     lastDataDate,
+    fullDataReady: csvReady,
   };
 }

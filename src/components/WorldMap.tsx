@@ -71,7 +71,7 @@ function tooltipContent(agg: CountryAgg, metric: ChoroplethMetric): React.ReactN
     <div>
       <div className="font-semibold mb-1">{agg.name}</div>
       <div>Total Granted: {formatUSD(agg.totalUSD)}</div>
-      <div>Grants: {formatNum(agg.grantIds.size)}</div>
+      <div>Grants: {formatNum(agg.grantCount)}</div>
       {metric !== 'none' && (
         <div>{getMetricLabel(metric)}: {metric === 'totalUSD' ? formatUSD(getMetricValue(agg, metric)) : formatNum(getMetricValue(agg, metric))}</div>
       )}
@@ -297,7 +297,7 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
                     }}
                     tabIndex={hasGrants ? 0 : -1}
                     role={hasGrants ? 'button' : undefined}
-                    aria-label={hasGrants && agg ? `${agg.name}: ${formatNum(agg.grantIds.size)} grants, ${formatUSD(agg.totalUSD)}` : undefined}
+                    aria-label={hasGrants && agg ? `${agg.name}: ${formatNum(agg.grantCount)} grants, ${formatUSD(agg.totalUSD)}` : undefined}
                     onMouseEnter={(e) => {
                       if (!hasGrants || !agg) return;
                       setTooltip({ x: e.clientX, y: e.clientY, content: tooltipContent(agg, metric) });

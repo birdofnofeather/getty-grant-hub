@@ -109,3 +109,18 @@ export interface CountryAgg {
   longevity: number;
   grantIds: Set<string>;
 }
+
+// Precomputed aggregates for instant first paint (getty_grants_agg.json).
+// Country totals use the multi-country split; headline totals are full.
+export interface AggCountry {
+  iso2: string; name: string; count: number; usd: number;
+  grantees: number; initiatives: number; minYear: number; maxYear: number;
+}
+export interface AggData {
+  generated: string;
+  maxYear: number;
+  headline: { grantCount: number; totalUSD: number };
+  headlineOrg: { grantCount: number; totalUSD: number };
+  years: { year: number; count: number; usd: number; countOrg: number; usdOrg: number }[];
+  countries: AggCountry[];
+}
