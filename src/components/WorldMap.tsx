@@ -6,7 +6,7 @@ import {
   ZoomableGroup,
 } from 'react-simple-maps';
 import { scaleLog } from 'd3-scale';
-import { interpolateRgb } from 'd3-interpolate';
+import { interpolateHcl } from 'd3-interpolate';
 import { Maximize, Minimize } from 'lucide-react';
 import type { CountryAgg, ChoroplethMetric } from '@/lib/grant-types';
 
@@ -66,19 +66,31 @@ function formatNum(n: number): string {
   return n.toLocaleString('en-US');
 }
 
-// Color ranges per metric type — dark-muted to bright-saturated (for dark bg)
+// Sequential ramps run DIM -> BRIGHT (brighter = more) because the map sits on a
+// dark canvas, so the highest-value countries visually pop instead of receding.
+// Interpolation happens in HCL space (see colorScale) for perceptually even
+// midtones. Two hue families only — blue for counts, amber for dollars — because
+// green sequential ramps are the least colour-vision-deficiency-safe.
 function getColorRange(metric: ChoroplethMetric): [string, string] {
   switch (metric) {
     case 'totalUSD':
-      return ['#fde8cc', '#d97706']; // pale amber → vivid amber
+      return ['#9a3412', '#fcd34d']; // dim amber → bright gold
     case 'uniqueGrantees':
     case 'uniqueInitiatives':
     case 'longevity':
-      return ['#bbf7d0', '#16a34a']; // pale green → vivid green
     case 'grantCount':
     default:
-      return ['#c7e0f4', '#1a56db']; // pale steel blue → vivid royal blue
+      return ['#1d4ed8', '#93c5fd']; // dim blue → bright sky
   }
+}
+
+// Build a multi-stop CSS gradient sampled from the HCL interpolator so the legend
+// bar matches the map's perceptual interpolation (a 2-stop CSS gradient would
+// interpolate in sRGB and drift from what the map shows).
+function hclGradient(colorMin: string, colorMax: string): string {
+  const interp = interpolateHcl(colorMin, colorMax);
+  const stops = [0, 0.2, 0.4, 0.6, 0.8, 1].map((t) => `${interp(t)} ${Math.round(t * 100)}%`);
+  return `linear-gradient(to right, ${stops.join(', ')})`;
 }
 
 const UNIFORM_COLOR = '#2563eb';
@@ -113,7 +125,7 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
       .domain([Math.max(min, 1), max])
       .range([0, 1])
       .clamp(true);
-    const interp = interpolateRgb(colorMin, colorMax);
+    const interp = interpolateHcl(colorMin, colorMax);
 
     return (v: number) => {
       if (v <= 0) return colorMin;
@@ -130,7 +142,7 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
     const max = nonUsValues.length > 0 ? Math.max(...nonUsValues) : Math.max(...allValues);
     const [colorMin, colorMax] = getColorRange(metric);
     const fmt = metric === 'totalUSD' ? formatUSD : formatNum;
-    return { colorMin, colorMax, minLabel: fmt(Math.round(min)), maxLabel: fmt(Math.round(max)) };
+    return { colorMin, colorMax, gradient: hclGradient(colorMin, colorMax), minLabel: fmt(Math.round(min)), maxLabel: fmt(Math.round(max)) };
   }, [countryAgg, metric, colorScale]);
 
   const toggleFullscreen = useCallback(() => {
@@ -191,7 +203,7 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
             style={{
               height: 12,
               width: 192,
-              background: `linear-gradient(to right, ${legendRange.colorMin}, ${legendRange.colorMax})`,
+              background: legendRange.gradient,
             }}
           />
           <div className="flex justify-between mt-1" style={{ width: 192 }}>
