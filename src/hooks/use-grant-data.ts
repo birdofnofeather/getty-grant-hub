@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
-import type { CleanGrant, MapGrant, FilterState, CountryAgg, AggData } from '@/lib/grant-types';
+import type { CleanGrant, MapGrant, FilterState, CountryAgg, AggData, InitiativeGroups } from '@/lib/grant-types';
 import { stripHtml, isIndividualGrant, applyPstOverride } from '@/lib/classification';
 
 const CLEAN_SOURCES = [
@@ -54,6 +54,8 @@ function parseClean(row: Record<string, string>): CleanGrant {
     grantAwardYear: parseInt(row.grantAwardYear) || 0,
     amountAwarded_USD: parseFloat(row.amountAwarded_USD) || 0,
     initiative,
+    initiativeType: stripHtml(row.initiativeType || ''),
+    pastInitiative: row.pastInitiative || '',
     grantee_name: row.grantee_name || '',
     projectTitle_clean: row.projectTitle_clean || '',
     projectTitleURL: row.projectTitleURL || '',
@@ -284,6 +286,28 @@ export function useGrantData(filters: FilterState) {
     return Array.from(set).sort();
   }, [cleanData]);
 
+  // Initiative grouping derived from the data (initiativeType / pastInitiative)
+  // instead of hardcoded lists, so new initiatives are classified automatically.
+  const initiativeGroups = useMemo<InitiativeGroups>(() => {
+    const info = new Map<string, { anyPast: boolean; anyCurrent: boolean }>();
+    for (const row of cleanData) {
+      if (!row.initiative) continue;
+      let a = info.get(row.initiative);
+      if (!a) { a = { anyPast: false, anyCurrent: false }; info.set(row.initiative, a); }
+      const t = (row.initiativeType || '').toLowerCase();
+      if (t === 'past' || (row.pastInitiative && row.pastInitiative.trim() !== '')) a.anyPast = true;
+      if (t === 'current') a.anyCurrent = true;
+    }
+    const current: string[] = [], past: string[] = [], other: string[] = [];
+    for (const [name, a] of info) {
+      if (a.anyCurrent && !a.anyPast) current.push(name);
+      else if (a.anyPast) past.push(name);
+      else other.push(name);
+    }
+    current.sort(); past.sort(); other.sort();
+    return { current, past, other };
+  }, [cleanData]);
+
   const maxYear = useMemo(() =>
     cleanData.length > 0
       ? Math.max(...cleanData.map(r => r.grantAwardYear))
@@ -314,6 +338,7 @@ export function useGrantData(filters: FilterState) {
     countryAgg,
     grantCountries,
     allInitiatives,
+    initiativeGroups,
     maxYear,
     lastDataDate,
     fullDataReady: csvReady,

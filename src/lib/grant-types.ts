@@ -4,11 +4,15 @@ export interface CleanGrant {
   grantAwardYear: number;
   amountAwarded_USD: number;
   initiative: string;
+  initiativeType: string;
+  pastInitiative: string;
   grantee_name: string;
   projectTitle_clean: string;
   projectTitleURL: string;
   is_partial_year: boolean;
 }
+
+export interface InitiativeGroups { current: string[]; past: string[]; other: string[]; }
 
 export interface MapGrant {
   grantId: string;
@@ -65,40 +69,7 @@ export const INDIVIDUAL_INITIATIVES = new Set([
   'Getty Rothschild Fellow',
 ]);
 
-export const CURRENT_INITIATIVES = [
-  'Black Visual Arts Archives',
-  'Connecting Art Histories',
-  'Connecting Art Histories Guest Scholars',
-  'Connecting Professionals/Sharing Expertise',
-  'Conserving Canvas',
-  'Getty Global Art and Sustainability Fellowships',
-  'Getty Marrow Undergraduate Internships',
-  'Graduate Internships',
-  'Keeping It Modern',
-  'Post-Bacc Conservation Internships',
-  'Scholars in Residence at the Getty',
-];
 
-export const PAST_INITIATIVES = [
-  'Campus Heritage Initiative',
-  'Central and Eastern European Initiative',
-  'Digital Art History',
-  'Electronic Cataloguing Initiative',
-  'Fund for New Orleans',
-  'Getty Marrow Emerging Professionals',
-  'Grants Outside of LA in support of Pacific Standard Time: LA/LA',
-  'MOSAIKON',
-  'Museums in Africa',
-  'Online Scholarly Catalogue Initiative (OSCI)',
-  'PST ART: Art & Science Collide',
-  'Pacific Standard Time Presents: Modern Architecture in L.A.',
-  'Pacific Standard Time: Art in L.A. 1945-1980',
-  'Pacific Standard Time: LA/LA',
-  'Panel Paintings',
-  'Postdoctoral Fellowships',
-  'Preserve L.A.',
-  'The Paper Project',
-];
 
 export interface CountryAgg {
   iso2: string;

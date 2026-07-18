@@ -35,10 +35,15 @@ jobs:
         # If this step fails (validation errors, network error, API change),
         # the workflow stops here. Files are NOT committed. GitHub emails you.
 
+      - name: Copy fresh data into public/ for the bundled fallback
+        run: |
+          cp getty_grants_clean.csv getty_grants_map.csv getty_grants_agg.json public/
+
       - name: Check whether files actually changed
         id: check_changes
         run: |
-          git diff --quiet getty_grants_clean.csv getty_grants_map.csv \
+          git diff --quiet getty_grants_clean.csv getty_grants_map.csv getty_grants_agg.json \
+            public/getty_grants_clean.csv public/getty_grants_map.csv public/getty_grants_agg.json \
             || echo "changed=true" >> $GITHUB_OUTPUT
 
       - name: Commit and push updated files
@@ -46,7 +51,8 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add getty_grants_clean.csv getty_grants_map.csv
+          git add getty_grants_clean.csv getty_grants_map.csv getty_grants_agg.json \
+                  public/getty_grants_clean.csv public/getty_grants_map.csv public/getty_grants_agg.json
           git commit -m "data: monthly Getty grants update $(date +'%Y-%m-%d')"
           git push
 

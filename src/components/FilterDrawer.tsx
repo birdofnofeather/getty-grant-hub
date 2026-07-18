@@ -7,8 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { X, Search, RotateCcw, Info } from 'lucide-react';
-import type { FilterState, ChoroplethMetric, DrawerMode } from '@/lib/grant-types';
-import { DEFAULT_FILTERS, CURRENT_INITIATIVES, PAST_INITIATIVES } from '@/lib/grant-types';
+import type { FilterState, ChoroplethMetric, DrawerMode, InitiativeGroups } from '@/lib/grant-types';
+import { DEFAULT_FILTERS } from '@/lib/grant-types';
 import { HAS_METHODOLOGY } from '@/lib/site-config';
 import { Link } from 'react-router-dom';
 
@@ -17,12 +17,13 @@ interface FilterDrawerProps {
   filters: FilterState;
   onChange: (f: Partial<FilterState>) => void;
   allInitiatives: string[];
+  initiativeGroups: InitiativeGroups;
   maxYear: number;
   hideMapOnly?: boolean;
   fullDataReady?: boolean;
 }
 
-export default function FilterDrawer({ mode, filters, onChange, allInitiatives, maxYear, hideMapOnly = false, fullDataReady = true }: FilterDrawerProps) {
+export default function FilterDrawer({ mode, filters, onChange, allInitiatives, initiativeGroups, maxYear, hideMapOnly = false, fullDataReady = true }: FilterDrawerProps) {
   const [initiativeSearch, setInitiativeSearch] = useState('');
 
   const isAdvanced = mode === 'advanced';
@@ -44,12 +45,7 @@ export default function FilterDrawer({ mode, filters, onChange, allInitiatives, 
   const metrics = isAdvanced ? advancedMetrics : basicMetrics;
 
   // Initiative grouping
-  const groupedInitiatives = useMemo(() => {
-    const currentSet = new Set(CURRENT_INITIATIVES);
-    const pastSet = new Set(PAST_INITIATIVES);
-    const other = allInitiatives.filter((i) => !currentSet.has(i) && !pastSet.has(i)).sort();
-    return { current: CURRENT_INITIATIVES, past: PAST_INITIATIVES, other };
-  }, [allInitiatives]);
+  const groupedInitiatives = initiativeGroups;
 
   const filteredInitiatives = useMemo(() => {
     const q = initiativeSearch.toLowerCase();

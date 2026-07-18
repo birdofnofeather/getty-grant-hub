@@ -5,7 +5,7 @@ import { loadClean } from './_fixtures';
 
 const row = (o: Partial<CleanGrant>): CleanGrant => ({
   grantId: Math.random().toString(), grantAwardDate: '', grantAwardYear: 2000,
-  amountAwarded_USD: 0, initiative: 'X', grantee_name: 'Org Museum',
+  amountAwarded_USD: 0, initiative: 'X', initiativeType: '', pastInitiative: '', grantee_name: 'Org Museum',
   projectTitle_clean: '', projectTitleURL: '', is_partial_year: false, ...o,
 });
 

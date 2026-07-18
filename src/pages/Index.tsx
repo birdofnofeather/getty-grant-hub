@@ -30,7 +30,7 @@ const Index = () => {
   const [viewMode, setViewMode] = useState<ViewMode>(initialUrl.viewMode ?? 'map');
   const yearFromUrl = initialUrl.yearProvided;
 
-  const { loading, error, headlineStats, countryAgg, grantCountries, allInitiatives, filteredMap, filteredClean, maxYear, lastDataDate, fullDataReady } = useGrantData(filters);
+  const { loading, error, headlineStats, countryAgg, grantCountries, allInitiatives, initiativeGroups, filteredMap, filteredClean, maxYear, lastDataDate, fullDataReady } = useGrantData(filters);
 
   // Extend year range to maxYear once data loads
   useEffect(() => {
@@ -188,6 +188,7 @@ const Index = () => {
                 filters={filters}
                 onChange={updateFilters}
                 allInitiatives={allInitiatives}
+                initiativeGroups={initiativeGroups}
                 maxYear={maxYear}
                 hideMapOnly={viewMode === 'data'}
                 fullDataReady={fullDataReady}

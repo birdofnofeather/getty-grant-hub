@@ -285,6 +285,13 @@ def main():
         df_new_raw   = pd.DataFrame([flatten_grant(g) for g in new_raw])
         df_new_clean = clean(df_new_raw)
         df_combined  = df_new_clean if df_existing.empty else pd.concat([df_existing, df_new_clean], ignore_index=True)
+
+        # Flag initiative names appearing for the first time — candidates for
+        # classification review (individual vs. organizational).
+        existing_inits = set(df_before['initiative'].dropna().unique()) if not df_before.empty else set()
+        fresh_inits = sorted(set(df_new_clean['initiative'].dropna().unique()) - existing_inits)
+        if fresh_inits:
+            print(f"  NEW INITIATIVES (review for classification): {fresh_inits}")
     else:
         df_combined = df_existing.reset_index(drop=True)
 
