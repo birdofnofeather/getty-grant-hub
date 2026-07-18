@@ -23,7 +23,7 @@ const Index = () => {
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('map');
 
-  const { loading, error, headlineStats, countryAgg, allInitiatives, filteredMap, filteredClean, maxYear } = useGrantData(filters);
+  const { loading, error, headlineStats, countryAgg, grantCountries, allInitiatives, filteredMap, filteredClean, maxYear } = useGrantData(filters);
 
   // Extend year range to maxYear once data loads
   useEffect(() => {
@@ -161,6 +161,7 @@ const Index = () => {
           countryAgg={countryAgg}
           filteredMap={filteredMap}
           filteredClean={filteredClean}
+          grantCountries={grantCountries}
           onClose={() => setSelectedCountry(null)}
         />
       </main>

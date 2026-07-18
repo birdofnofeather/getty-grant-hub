@@ -17,10 +17,11 @@ interface CountryDetailPanelProps {
   countryAgg: Map<string, CountryAgg>;
   filteredMap: MapGrant[];
   filteredClean: CleanGrant[];
+  grantCountries: Map<string, { iso2: string; name: string }[]>;
   onClose: () => void;
 }
 
-export default function CountryDetailPanel({ iso2, countryAgg, filteredMap, filteredClean, onClose }: CountryDetailPanelProps) {
+export default function CountryDetailPanel({ iso2, countryAgg, filteredMap, filteredClean, grantCountries, onClose }: CountryDetailPanelProps) {
   const [sortField, setSortField] = useState<SortField>('year');
   const [sortAsc, setSortAsc] = useState(false);
   const [expandedGrants, setExpandedGrants] = useState<Set<string>>(new Set());
@@ -40,7 +41,9 @@ export default function CountryDetailPanel({ iso2, countryAgg, filteredMap, filt
       grantId: string;
       year: number;
       grantee: string;
-      amount: number;
+      amount: number;      // amount attributed to THIS country (split share)
+      fullAmount: number;  // full grant amount
+      others: string[];    // other countries this grant also serves
       initiative: string;
       title: string;
     }> = [];
@@ -49,11 +52,17 @@ export default function CountryDetailPanel({ iso2, countryAgg, filteredMap, filt
       if (seen.has(row.grantId)) continue;
       seen.add(row.grantId);
       const clean = cleanMap.get(row.grantId);
+      const full = clean ? clean.amountAwarded_USD : row.amountAwarded_USD;
+      const countries = grantCountries.get(row.grantId) || [];
+      const denom = countries.length || 1;
+      const others = countries.filter((c) => c.iso2 !== iso2).map((c) => c.name);
       result.push({
         grantId: row.grantId,
         year: row.grantAwardYear,
         grantee: row.grantee_name,
-        amount: clean ? clean.amountAwarded_USD : row.amountAwarded_USD,
+        amount: full > 0 ? full / denom : 0,
+        fullAmount: full,
+        others,
         initiative: row.initiative,
         title: row.projectTitle_clean,
       });
@@ -70,7 +79,7 @@ export default function CountryDetailPanel({ iso2, countryAgg, filteredMap, filt
     });
 
     return result;
-  }, [iso2, filteredMap, filteredClean, sortField, sortAsc]);
+  }, [iso2, filteredMap, filteredClean, grantCountries, sortField, sortAsc]);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) setSortAsc(!sortAsc);
@@ -127,6 +136,12 @@ export default function CountryDetailPanel({ iso2, countryAgg, filteredMap, filt
                         <span className="font-mono whitespace-nowrap">{g.amount > 0 ? formatUSD(g.amount) : '—'}</span>
                       </div>
                       <div className="text-muted-foreground mt-0.5">{g.initiative}</div>
+                      {g.others.length > 0 && g.fullAmount > 0 && (
+                        <div className="mt-1 text-[11px] text-amber-600/90 dark:text-amber-500/90">
+                          {formatUSD(g.amount)} of this {formatUSD(g.fullAmount)} grant, split evenly across {g.others.length + 1} countries.
+                          {' '}Also serves: {g.others.join(', ')}.
+                        </div>
+                      )}
                       {g.title && (
                         <div
                           className={`mt-1 text-foreground/70 ${!isExpanded && titleLong ? 'truncate cursor-pointer' : titleLong ? 'cursor-pointer' : ''}`}

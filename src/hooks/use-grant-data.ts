@@ -194,8 +194,32 @@ export function useGrantData(filters: FilterState) {
     return { totalUSD, grantCount, hasPartialYear };
   }, [filteredClean, filters.yearRange]);
 
+  // Multi-country dollar split (added July 2026): a grant that serves N countries
+  // contributes amount/N to each country's total, so per-country totals no longer
+  // double-count grants that span borders. grantCountries lists the distinct
+  // countries each grant touches (after the PST override); its length is the
+  // split denominator. Grant-level filters keep or drop a grant as a whole, so
+  // this length equals the grant's intrinsic country span for any passing grant.
+  const grantCountries = useMemo(() => {
+    const gc = new Map<string, { iso2: string; name: string }[]>();
+    for (const row of filteredMap) {
+      if (!row.map_iso2) continue;
+      let list = gc.get(row.grantId);
+      if (!list) { list = []; gc.set(row.grantId, list); }
+      if (!list.some((x) => x.iso2 === row.map_iso2)) list.push({ iso2: row.map_iso2, name: row.map_country });
+    }
+    return gc;
+  }, [filteredMap]);
+
+  const cleanById = useMemo(() => {
+    const m = new Map<string, CleanGrant>();
+    for (const c of filteredClean) m.set(c.grantId, c);
+    return m;
+  }, [filteredClean]);
+
   const countryAgg = useMemo(() => {
     const map = new Map<string, CountryAgg>();
+    const rowsByIso = new Map<string, MapGrant[]>();
     for (const row of filteredMap) {
       if (!row.map_iso2) continue;
       let agg = map.get(row.map_iso2);
@@ -211,14 +235,16 @@ export function useGrantData(filters: FilterState) {
           grantIds: new Set(),
         };
         map.set(row.map_iso2, agg);
+        rowsByIso.set(row.map_iso2, []);
       }
       agg.grantCount++;
       agg.grantIds.add(row.grantId);
+      rowsByIso.get(row.map_iso2)!.push(row);
     }
 
-    // compute unique counts and longevity
+    // compute unique counts, longevity, and split financial totals
     for (const [iso2, agg] of map) {
-      const rows = filteredMap.filter((r) => r.map_iso2 === iso2);
+      const rows = rowsByIso.get(iso2)!;
       const grantees = new Set(rows.map((r) => r.grantee_name));
       const initiatives = new Set(rows.map((r) => r.initiative));
       const years = rows.map((r) => r.grantAwardYear);
@@ -226,9 +252,16 @@ export function useGrantData(filters: FilterState) {
       agg.uniqueInitiatives = initiatives.size;
       agg.longevity = years.length > 0 ? Math.max(...years) - Math.min(...years) : 0;
 
-      // financial totals from clean CSV for matching grantIds
-      const matchingClean = filteredClean.filter((c) => agg.grantIds.has(c.grantId));
-      agg.totalUSD = matchingClean.reduce((s, c) => s + (c.amountAwarded_USD > 0 ? c.amountAwarded_USD : 0), 0);
+      // financial totals from clean CSV, split evenly across the grant's countries
+      let total = 0;
+      for (const gid of agg.grantIds) {
+        const clean = cleanById.get(gid);
+        const full = clean && clean.amountAwarded_USD > 0 ? clean.amountAwarded_USD : 0;
+        if (full <= 0) continue;
+        const denom = grantCountries.get(gid)?.length || 1;
+        total += full / denom;
+      }
+      agg.totalUSD = total;
     }
 
     // apply min grant count filter
@@ -241,7 +274,7 @@ export function useGrantData(filters: FilterState) {
     }
 
     return map;
-  }, [filteredMap, filteredClean, filters.minGrantCountPerCountry]);
+  }, [filteredMap, cleanById, grantCountries, filters.minGrantCountPerCountry]);
 
   const allInitiatives = useMemo(() => {
     const set = new Set<string>();
@@ -267,6 +300,7 @@ export function useGrantData(filters: FilterState) {
     filteredMap,
     headlineStats,
     countryAgg,
+    grantCountries,
     allInitiatives,
     maxYear,
   };
