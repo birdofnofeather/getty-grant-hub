@@ -41,3 +41,7 @@ HCL for perceptually even steps (verified monotonic in luminance); two families 
 counts/measures, amber for dollars. Low ends still clear the grey "no-grant" hatch by both
 luminance and hue, so funded vs. unfunded countries stay distinct. Logic recorded in
 JUDGMENT_CALLS.md.
+| M1 | 2026-07-18 | done | index.html, src/pages/Index.tsx, src/lib/site-config.ts, src/hooks/use-grant-data.ts, src/lib/grant-types.ts | 0 Lovable refs; real title/meta/OG; header subtitle; provenance footer w/ last-update date + Methodology link |
+| M3 | 2026-07-18 | done | src/lib/grant-types.ts, src/components/WorldMap.tsx | default choropleth = Grant Count; zoom in/out/reset; keyboard focus + Enter/Space + aria-labels on countries |
+| M5 | 2026-07-18 | done | src/components/DataDashboard.tsx, src/lib/dashboard-data.ts | new People-vs-Orgs chart (first); Top Countries excludes US w/ annotation; single-metric Top Initiatives toggle; avg-size ≥10 grants; partial-year shading; extracted testable data-prep |
+| M6 | 2026-07-18 | done | src/pages/Methodology.tsx, src/App.tsx, src/components/FilterDrawer.tsx | /methodology route (plain-language, 6 sections incl. limits); footer + org-toggle info-icon links |
