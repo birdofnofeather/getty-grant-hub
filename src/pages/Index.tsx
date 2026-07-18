@@ -9,6 +9,9 @@ import type { FilterState, DrawerMode } from '@/lib/grant-types';
 import { DEFAULT_FILTERS } from '@/lib/grant-types';
 import { HAS_METHODOLOGY } from '@/lib/site-config';
 import { Link } from 'react-router-dom';
+import { serializeState, parseState } from '@/lib/url-state';
+import { toast } from 'sonner';
+import { Link2 } from 'lucide-react';
 
 type ViewMode = 'map' | 'data';
 
@@ -20,19 +23,35 @@ function formatNum(n: number): string {
 }
 
 const Index = () => {
-  const [filters, setFilters] = useState<FilterState>({ ...DEFAULT_FILTERS });
+  const initialUrl = parseState(window.location.search);
+  const [filters, setFilters] = useState<FilterState>({ ...DEFAULT_FILTERS, ...initialUrl.filters });
   const [drawerMode, setDrawerMode] = useState<DrawerMode>('none');
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('map');
+  const [viewMode, setViewMode] = useState<ViewMode>(initialUrl.viewMode ?? 'map');
+  const yearFromUrl = initialUrl.yearProvided;
 
   const { loading, error, headlineStats, countryAgg, grantCountries, allInitiatives, filteredMap, filteredClean, maxYear, lastDataDate, fullDataReady } = useGrantData(filters);
 
   // Extend year range to maxYear once data loads
   useEffect(() => {
-    if (!loading && maxYear > filters.yearRange[1]) {
+    if (!loading && !yearFromUrl && maxYear > filters.yearRange[1]) {
       setFilters((prev) => ({ ...prev, yearRange: [prev.yearRange[0], maxYear] }));
     }
   }, [loading, maxYear]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep the URL in sync with the current view (no history spam).
+  useEffect(() => {
+    const qs = serializeState(filters, viewMode, maxYear);
+    window.history.replaceState(null, '', qs || window.location.pathname);
+  }, [filters, viewMode, maxYear]);
+
+  const copyLink = useCallback(() => {
+    const url = window.location.origin + window.location.pathname + serializeState(filters, viewMode, maxYear);
+    navigator.clipboard.writeText(url).then(
+      () => toast.success('Link copied to clipboard'),
+      () => toast.error('Could not copy link'),
+    );
+  }, [filters, viewMode, maxYear]);
 
   const updateFilters = useCallback((partial: Partial<FilterState>) => {
     setFilters((prev) => ({ ...prev, ...partial }));
@@ -154,6 +173,13 @@ const Index = () => {
                     Loading full data…
                   </span>
                 )}
+                <button
+                  onClick={copyLink}
+                  className="text-xs px-3 py-1.5 rounded-full border border-input bg-card text-foreground hover:border-primary/50 transition-colors inline-flex items-center gap-1 ml-auto"
+                  title="Copy a link to this exact view"
+                >
+                  <Link2 className="h-3 w-3" /> Copy link
+                </button>
               </div>
 
               {/* Filter drawer */}
