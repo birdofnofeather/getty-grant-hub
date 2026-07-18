@@ -7,7 +7,7 @@ import {
 } from 'react-simple-maps';
 import { scaleLog } from 'd3-scale';
 import { interpolateHcl } from 'd3-interpolate';
-import { Maximize, Minimize } from 'lucide-react';
+import { Maximize, Minimize, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import type { CountryAgg, ChoroplethMetric } from '@/lib/grant-types';
 
 const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
@@ -66,6 +66,19 @@ function formatNum(n: number): string {
   return n.toLocaleString('en-US');
 }
 
+function tooltipContent(agg: CountryAgg, metric: ChoroplethMetric): React.ReactNode {
+  return (
+    <div>
+      <div className="font-semibold mb-1">{agg.name}</div>
+      <div>Total Granted: {formatUSD(agg.totalUSD)}</div>
+      <div>Grants: {formatNum(agg.grantIds.size)}</div>
+      {metric !== 'none' && (
+        <div>{getMetricLabel(metric)}: {metric === 'totalUSD' ? formatUSD(getMetricValue(agg, metric)) : formatNum(getMetricValue(agg, metric))}</div>
+      )}
+    </div>
+  );
+}
+
 // Sequential ramps run DIM -> BRIGHT (brighter = more) because the map sits on a
 // dark canvas, so the highest-value countries visually pop instead of receding.
 // Interpolation happens in HCL space (see colorScale) for perceptually even
@@ -106,6 +119,11 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; content: React.ReactNode } | null>(null);
+  const [position, setPosition] = useState<{ coordinates: [number, number]; zoom: number }>({ coordinates: [0, 0], zoom: 1 });
+
+  const zoomIn = useCallback(() => setPosition((p) => ({ ...p, zoom: Math.min(p.zoom * 1.5, 8) })), []);
+  const zoomOut = useCallback(() => setPosition((p) => ({ ...p, zoom: Math.max(p.zoom / 1.5, 1) })), []);
+  const resetZoom = useCallback(() => setPosition({ coordinates: [0, 0], zoom: 1 }), []);
 
   const colorScale = useMemo(() => {
     if (metric === 'none') return null;
@@ -184,6 +202,22 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
         {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
       </button>
 
+      {/* Zoom controls */}
+      <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-1">
+        <button onClick={zoomIn} aria-label="Zoom in"
+          className="p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-md bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors">
+          <ZoomIn className="h-4 w-4" />
+        </button>
+        <button onClick={zoomOut} aria-label="Zoom out"
+          className="p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-md bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors">
+          <ZoomOut className="h-4 w-4" />
+        </button>
+        <button onClick={resetZoom} aria-label="Reset zoom"
+          className="p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-md bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors">
+          <RotateCcw className="h-4 w-4" />
+        </button>
+      </div>
+
       {/* Hatching pattern for no-grant countries */}
       <svg width="0" height="0" style={{ position: 'absolute' }}>
         <defs>
@@ -228,7 +262,7 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
         projectionConfig={{ scale: 130, center: [10, 20] }}
         style={{ width: '100%', height: isFullscreen ? '100vh' : '520px' }}
       >
-        <ZoomableGroup>
+        <ZoomableGroup zoom={position.zoom} center={position.coordinates} minZoom={1} maxZoom={8} onMoveEnd={(pos) => setPosition(pos)}>
           <Geographies geography={GEO_URL}>
             {({ geographies }) =>
               geographies.map((geo) => {
@@ -261,21 +295,26 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
                       hover: { outline: 'none', fill: hasGrants ? '#e2e8f0' : undefined, cursor: hasGrants ? 'pointer' : 'default' },
                       pressed: { outline: 'none' },
                     }}
+                    tabIndex={hasGrants ? 0 : -1}
+                    role={hasGrants ? 'button' : undefined}
+                    aria-label={hasGrants && agg ? `${agg.name}: ${formatNum(agg.grantIds.size)} grants, ${formatUSD(agg.totalUSD)}` : undefined}
                     onMouseEnter={(e) => {
                       if (!hasGrants || !agg) return;
-                      const content = (
-                        <div>
-                          <div className="font-semibold mb-1">{agg.name}</div>
-                          <div>Total Granted: {formatUSD(agg.totalUSD)}</div>
-                          <div>Grants: {formatNum(agg.grantIds.size)}</div>
-                          {metric !== 'none' && (
-                            <div>{getMetricLabel(metric)}: {metric === 'totalUSD' ? formatUSD(getMetricValue(agg, metric)) : formatNum(getMetricValue(agg, metric))}</div>
-                          )}
-                        </div>
-                      );
-                      setTooltip({ x: e.clientX, y: e.clientY, content });
+                      setTooltip({ x: e.clientX, y: e.clientY, content: tooltipContent(agg, metric) });
                     }}
                     onMouseLeave={() => setTooltip(null)}
+                    onFocus={(e) => {
+                      if (!hasGrants || !agg) return;
+                      const rect = (e.target as SVGGraphicsElement).getBoundingClientRect();
+                      setTooltip({ x: rect.left + rect.width / 2, y: rect.top, content: tooltipContent(agg, metric) });
+                    }}
+                    onBlur={() => setTooltip(null)}
+                    onKeyDown={(e) => {
+                      if (hasGrants && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault();
+                        onCountryClick(alpha2);
+                      }
+                    }}
                     onClick={() => {
                       if (hasGrants) onCountryClick(alpha2);
                     }}

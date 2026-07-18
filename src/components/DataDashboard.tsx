@@ -1,23 +1,29 @@
-import { useMemo } from 'react';
+import { useMemo, useState, type ReactElement } from 'react';
 import {
   ResponsiveContainer,
-  BarChart, Bar,
+  BarChart, Bar, Cell,
   LineChart, Line,
   XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from 'recharts';
 import type { CleanGrant, MapGrant, CountryAgg } from '@/lib/grant-types';
+import {
+  perYear, peopleVsOrgByYear, topInitiatives, avgGrantSize,
+  topCountriesExUS, sizeBuckets, cumulativeUSD,
+} from '@/lib/dashboard-data';
 
 interface Props {
   filteredClean: CleanGrant[];
   filteredMap: MapGrant[];
   countryAgg: Map<string, CountryAgg>;
+  maxYear: number;
 }
 
 const COLORS = {
   primary: 'hsl(var(--primary))',
   muted: 'hsl(var(--muted-foreground))',
-  accent: 'hsl(217 91% 60%)',
-  amber: 'hsl(32 95% 44%)',
+  accent: 'hsl(217 91% 60%)',   // blue — organizations / counts
+  amber: 'hsl(32 95% 44%)',     // amber — dollars
+  people: 'hsl(160 84% 39%)',   // teal — individuals
 };
 
 function formatShortUSD(n: number): string {
@@ -35,85 +41,46 @@ const tooltipStyle = {
   color: 'hsl(var(--foreground))',
 };
 
-const ChartCard = ({ title, subtitle, children, height = 280 }: { title: string; subtitle?: string; children: React.ReactNode; height?: number }) => (
+const ChartCard = ({ title, subtitle, action, children, height = 280 }: { title: string; subtitle?: string; action?: React.ReactNode; children: React.ReactNode; height?: number }) => (
   <div className="bg-card rounded-lg border p-4 shadow-sm">
-    <div className="mb-3">
-      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-      {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
+    <div className="mb-3 flex items-start justify-between gap-2">
+      <div>
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
+      </div>
+      {action}
     </div>
     <div style={{ width: '100%', height }}>
-      <ResponsiveContainer>{children as any}</ResponsiveContainer>
+      <ResponsiveContainer>{children as ReactElement}</ResponsiveContainer>
     </div>
   </div>
 );
 
-const DataDashboard = ({ filteredClean, filteredMap, countryAgg }: Props) => {
-  // Grants per year (count + USD)
-  const perYear = useMemo(() => {
-    const m = new Map<number, { year: number; count: number; usd: number }>();
-    for (const r of filteredClean) {
-      const y = r.grantAwardYear;
-      if (!y) continue;
-      let agg = m.get(y);
-      if (!agg) { agg = { year: y, count: 0, usd: 0 }; m.set(y, agg); }
-      agg.count++;
-      if (r.amountAwarded_USD > 0) agg.usd += r.amountAwarded_USD;
-    }
-    return Array.from(m.values()).sort((a, b) => a.year - b.year);
-  }, [filteredClean]);
+const Pills = ({ options, value, onChange }: { options: { v: string; label: string }[]; value: string; onChange: (v: string) => void }) => (
+  <div className="inline-flex rounded-full border border-input bg-background p-0.5 shrink-0">
+    {options.map((o) => (
+      <button key={o.v} onClick={() => onChange(o.v)}
+        className={`text-[11px] px-2.5 py-1 rounded-full transition-colors ${value === o.v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+        {o.label}
+      </button>
+    ))}
+  </div>
+);
 
-  // Top initiatives by USD amount
-  const topInitiatives = useMemo(() => {
-    const m = new Map<string, { name: string; count: number; usd: number }>();
-    for (const r of filteredClean) {
-      const key = r.initiative || '(Unspecified)';
-      let agg = m.get(key);
-      if (!agg) { agg = { name: key, count: 0, usd: 0 }; m.set(key, agg); }
-      agg.count++;
-      if (r.amountAwarded_USD > 0) agg.usd += r.amountAwarded_USD;
-    }
-    return Array.from(m.values()).sort((a, b) => b.usd - a.usd).slice(0, 12);
-  }, [filteredClean]);
+const commonXAxis = { interval: 'preserveStartEnd' as const, minTickGap: 20, tick: { fill: 'hsl(var(--muted-foreground))', fontSize: 11 } };
 
-  // Average grant size by initiative
-  const avgGrantSize = useMemo(() => {
-    const m = new Map<string, { name: string; avg: number; count: number }>();
-    for (const r of filteredClean) {
-      const key = r.initiative || '(Unspecified)';
-      let agg = m.get(key);
-      if (!agg) { agg = { name: key, avg: 0, count: 0 }; m.set(key, agg); }
-      agg.count++;
-      if (r.amountAwarded_USD > 0) agg.avg += r.amountAwarded_USD;
-    }
-    return Array.from(m.values())
-      .map((x) => ({ name: x.name, avg: x.count > 0 ? Math.round(x.avg / x.count) : 1, count: x.count }))
-      .sort((a, b) => b.avg - a.avg)
-      .slice(0, 12);
-  }, [filteredClean]);
+const DataDashboard = ({ filteredClean, countryAgg, maxYear }: Props) => {
+  const [initBy, setInitBy] = useState<'usd' | 'count'>('usd');
+  const [povBy, setPovBy] = useState<'count' | 'usd'>('count');
 
-  // Top countries by grant count (from countryAgg)
-  const topCountries = useMemo(() => {
-    return Array.from(countryAgg.values())
-      .map((c) => ({ name: c.name || c.iso2, count: c.grantCount, usd: c.totalUSD }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 12);
-  }, [countryAgg]);
-
-  // Grant size distribution buckets
-  const sizeBuckets = useMemo(() => {
-    const buckets = [
-      { label: '< $5K', min: 0, max: 5_000 },
-      { label: '$5K–25K', min: 5_000, max: 25_000 },
-      { label: '$25K–100K', min: 25_000, max: 100_000 },
-      { label: '$100K–500K', min: 100_000, max: 500_000 },
-      { label: '$500K–1M', min: 500_000, max: 1_000_000 },
-      { label: '> $1M', min: 1_000_000, max: Infinity },
-    ];
-    return buckets.map((b) => ({
-      label: b.label,
-      count: filteredClean.filter((r) => r.amountAwarded_USD >= b.min && r.amountAwarded_USD < b.max).length,
-    }));
-  }, [filteredClean]);
+  const years = useMemo(() => perYear(filteredClean), [filteredClean]);
+  const pov = useMemo(() => peopleVsOrgByYear(filteredClean), [filteredClean]);
+  const inits = useMemo(() => topInitiatives(filteredClean, initBy), [filteredClean, initBy]);
+  const avg = useMemo(() => avgGrantSize(filteredClean, 10), [filteredClean]);
+  const countries = useMemo(() => topCountriesExUS(countryAgg), [countryAgg]);
+  const buckets = useMemo(() => sizeBuckets(filteredClean), [filteredClean]);
+  const cumulative = useMemo(() => cumulativeUSD(years), [years]);
+  const partialNote = `${maxYear} is a partial year`;
 
   if (filteredClean.length === 0) {
     return (
@@ -123,51 +90,83 @@ const DataDashboard = ({ filteredClean, filteredMap, countryAgg }: Props) => {
     );
   }
 
+  const barOpacity = (year: number) => (year === maxYear ? 0.45 : 1);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <ChartCard title="Total USD Awarded per Year" subtitle="Sum of amount awarded each year">
-        <BarChart data={perYear} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
+      {/* NEW centerpiece: People vs Organizations over time */}
+      <ChartCard
+        title="People vs. Organizations Over Time"
+        subtitle={`Grants to individuals (fellows, interns, scholars) vs. institutions · ${partialNote}`}
+        action={<Pills options={[{ v: 'count', label: 'Grants' }, { v: 'usd', label: 'Dollars' }]} value={povBy} onChange={(v) => setPovBy(v as 'count' | 'usd')} />}
+        height={300}
+      >
+        <BarChart data={pov} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis dataKey="year" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+          <XAxis dataKey="year" {...commonXAxis} />
+          <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={(v: number) => (povBy === 'usd' ? formatShortUSD(v) : String(v))} />
+          <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => (povBy === 'usd' ? formatShortUSD(v) : v.toLocaleString())} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Bar dataKey={povBy === 'usd' ? 'indUsd' : 'indCount'} stackId="a" fill={COLORS.people} name="Individuals" radius={[0, 0, 0, 0]} />
+          <Bar dataKey={povBy === 'usd' ? 'orgUsd' : 'orgCount'} stackId="a" fill={COLORS.accent} name="Organizations" radius={[2, 2, 0, 0]} />
+        </BarChart>
+      </ChartCard>
+
+      <ChartCard title="Total USD Awarded per Year" subtitle={`Sum of amount awarded each year · ${partialNote}`}>
+        <BarChart data={years} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+          <XAxis dataKey="year" {...commonXAxis} />
           <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={formatShortUSD} />
           <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => formatShortUSD(v)} />
-          <Bar dataKey="usd" fill={COLORS.amber} name="USD" radius={[3, 3, 0, 0]} />
+          <Bar dataKey="usd" fill={COLORS.amber} name="USD" radius={[3, 3, 0, 0]}>
+            {years.map((d) => <Cell key={d.year} fillOpacity={barOpacity(d.year)} />)}
+          </Bar>
         </BarChart>
       </ChartCard>
 
-      <ChartCard title="Grants per Year" subtitle="Number of grants awarded each year">
-        <BarChart data={perYear} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
+      <ChartCard title="Grants per Year" subtitle={`Number of grants awarded each year · ${partialNote}`}>
+        <BarChart data={years} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis dataKey="year" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+          <XAxis dataKey="year" {...commonXAxis} />
           <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
           <Tooltip contentStyle={tooltipStyle} />
-          <Bar dataKey="count" fill={COLORS.accent} name="Grants" radius={[3, 3, 0, 0]} />
+          <Bar dataKey="count" fill={COLORS.accent} name="Grants" radius={[3, 3, 0, 0]}>
+            {years.map((d) => <Cell key={d.year} fillOpacity={barOpacity(d.year)} />)}
+          </Bar>
         </BarChart>
       </ChartCard>
 
-      <ChartCard title="Top Initiatives by Amount" subtitle="By total USD awarded" height={360}>
-        <BarChart data={topInitiatives} layout="vertical" margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
+      <ChartCard
+        title="Top Initiatives"
+        subtitle={initBy === 'usd' ? 'By total USD awarded' : 'By number of grants'}
+        action={<Pills options={[{ v: 'usd', label: 'By dollars' }, { v: 'count', label: 'By grant count' }]} value={initBy} onChange={(v) => setInitBy(v as 'usd' | 'count')} />}
+        height={360}
+      >
+        <BarChart data={inits} layout="vertical" margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={formatShortUSD} />
+          <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={initBy === 'usd' ? formatShortUSD : undefined} />
           <YAxis type="category" dataKey="name" width={180} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-          <Tooltip contentStyle={tooltipStyle} formatter={(v: number, name: string) => name === 'USD' ? formatShortUSD(v) : v.toLocaleString()} />
-          <Bar dataKey="usd" fill={COLORS.amber} radius={[0, 3, 3, 0]} name="USD" />
-          <Bar dataKey="count" fill={COLORS.accent} radius={[0, 3, 3, 0]} name="Grants" />
+          <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => (initBy === 'usd' ? formatShortUSD(v) : v.toLocaleString())} />
+          <Bar dataKey={initBy} fill={initBy === 'usd' ? COLORS.amber : COLORS.accent} radius={[0, 3, 3, 0]} name={initBy === 'usd' ? 'USD' : 'Grants'} />
         </BarChart>
       </ChartCard>
 
-      <ChartCard title="Avg Grant Size by Initiative" subtitle="Average USD per grant" height={360}>
-        <BarChart data={avgGrantSize} layout="vertical" margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
+      <ChartCard title="Avg Grant Size by Initiative" subtitle="Average USD per grant · initiatives with ≥ 10 grants" height={360}>
+        <BarChart data={avg} layout="vertical" margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={formatShortUSD} />
           <YAxis type="category" dataKey="name" width={180} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-          <Tooltip contentStyle={tooltipStyle} formatter={(v: number, name: string) => name === 'Avg USD' ? formatShortUSD(v) : v.toLocaleString()} />
+          <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => formatShortUSD(v)} />
           <Bar dataKey="avg" fill={COLORS.primary} radius={[0, 3, 3, 0]} name="Avg USD" />
         </BarChart>
       </ChartCard>
 
-      <ChartCard title="Top Countries" subtitle="By number of grants (mapped)" height={360}>
-        <BarChart data={topCountries} layout="vertical" margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
+      <ChartCard
+        title="Top Countries (excluding U.S.)"
+        subtitle={`U.S.: ${countries.usCount.toLocaleString()} grants — shown separately so other countries are readable`}
+        height={360}
+      >
+        <BarChart data={countries.bars} layout="vertical" margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
           <YAxis type="category" dataKey="name" width={140} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
@@ -177,7 +176,7 @@ const DataDashboard = ({ filteredClean, filteredMap, countryAgg }: Props) => {
       </ChartCard>
 
       <ChartCard title="Grant Size Distribution" subtitle="Number of grants by award amount">
-        <BarChart data={sizeBuckets} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
+        <BarChart data={buckets} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis dataKey="label" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
           <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
@@ -186,16 +185,10 @@ const DataDashboard = ({ filteredClean, filteredMap, countryAgg }: Props) => {
         </BarChart>
       </ChartCard>
 
-      <ChartCard title="Cumulative USD Over Time" subtitle="Running total of USD awarded">
-        <LineChart
-          data={(() => {
-            let cum = 0;
-            return perYear.map((p) => ({ year: p.year, cumulative: (cum += p.usd) }));
-          })()}
-          margin={{ top: 5, right: 12, left: 0, bottom: 5 }}
-        >
+      <ChartCard title="Cumulative USD Over Time" subtitle={`Running total of USD awarded · ${partialNote}`}>
+        <LineChart data={cumulative} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis dataKey="year" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+          <XAxis dataKey="year" {...commonXAxis} />
           <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={formatShortUSD} />
           <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => formatShortUSD(v)} />
           <Legend wrapperStyle={{ fontSize: 11 }} />

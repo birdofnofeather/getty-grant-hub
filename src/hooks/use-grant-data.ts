@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
 import type { CleanGrant, MapGrant, FilterState, CountryAgg } from '@/lib/grant-types';
-import { INDIVIDUAL_INITIATIVES as INDIV_SET } from '@/lib/grant-types';
+import { stripHtml, isIndividualGrant, applyPstOverride } from '@/lib/classification';
 
 const CLEAN_SOURCES = [
   'https://raw.githubusercontent.com/birdofnofeather/getty-grant-hub/main/getty_grants_clean.csv',
@@ -15,57 +15,11 @@ const MAP_SOURCES = [
   '/getty_grants_map.csv',
 ];
 
-function stripHtml(s: string): string {
-  return s.replace(/<[^>]*>/g, '');
-}
-
-const HONORIFICS = ['Mr.', 'Ms.', 'Mrs.', 'Dr.', 'Professor ', 'Prof.', 'Miss ', 'Arq.'];
-
-const SCOPED_INITIATIVES = new Set([
-  'Central and Eastern European Initiative',
-  'Research Grants (Team and Individual)',
-]);
-
-const ORG_KEYWORDS = /university|college|collegium|museum|institute|institut|foundation|fondation|stiftung|association|asociaci[oó]n|center|centre|academy|library|council|society|trust|fund|school|gallery|archive|research|national|international|royal|state|federal|regents|board|directorate|seminar|forum|program|programme|office|department|ministry|government|authority|agency|committee|commission|corporation|company|inc\.|ltd\.|llc|arts$/i;
-
-function looksLikePersonName(name: string): boolean {
-  if (!name || typeof name !== 'string') return false;
-  if (ORG_KEYWORDS.test(name)) return false;
-  const words = name.trim().split(/\s+/);
-  if (words.length < 2 || words.length > 4) return false;
-  if (/\d/.test(name)) return false;
-  for (const word of words) {
-    if (!/^[A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF\-'.]+$/.test(word)) return false;
-  }
-  return true;
-}
-
-function isIndividualGrant(row: { initiative: string; amountAwarded_USD: number; grantee_name: string }): boolean {
-  // Signal 1: Initiative-level blanket rules
-  if (INDIV_SET.has(row.initiative)) return true;
-  if (row.initiative === 'Summer Institutes' && row.amountAwarded_USD < 5000) return true;
-
-  // Signal 2: Honorific prefix check
-  if (HONORIFICS.some(h => row.grantee_name.startsWith(h))) return true;
-
-  // Signal 3: CEEI amount rule
-  if (row.initiative === 'Central and Eastern European Initiative') {
-    const amt = row.amountAwarded_USD;
-    if (amt === 5000 || amt === 10000) return true;
-  }
-
-  // Signal 4: Name-pattern heuristic for scoped initiatives
-  if (SCOPED_INITIATIVES.has(row.initiative)) {
-    if (looksLikePersonName(row.grantee_name)) return true;
-  }
-
-  return false;
-}
-
 function parseClean(row: Record<string, string>): CleanGrant {
   const initiative = stripHtml(row.initiative || '');
   return {
     grantId: row.grantId || '',
+    grantAwardDate: row.grantAwardDate || '',
     grantAwardYear: parseInt(row.grantAwardYear) || 0,
     amountAwarded_USD: parseFloat(row.amountAwarded_USD) || 0,
     initiative,
@@ -167,24 +121,7 @@ export function useGrantData(filters: FilterState) {
   const filteredClean = useMemo(() => applyBaseFilters(cleanData, filters), [cleanData, filters]);
   const filteredMap = useMemo(() => {
     const base = applyBaseFilters(mapData, filters);
-    // PST LA/LA grants map to Los Angeles, USA — except those with known non-US locations
-    const PST_LALA = 'Pacific Standard Time: LA/LA';
-    const PST_KEEP_ORIGINAL = new Set(['201527020', '201526957', '20150007']);
-    const result: MapGrant[] = [];
-    const pstGrantIds = new Set<string>();
-    for (const row of base) {
-      if (row.initiative === PST_LALA || row.initiative === 'Grants Outside of LA in support of Pacific Standard Time: LA/LA') {
-        if (PST_KEEP_ORIGINAL.has(row.grantId)) {
-          result.push(row);
-        } else if (!pstGrantIds.has(row.grantId)) {
-          pstGrantIds.add(row.grantId);
-          result.push({ ...row, map_iso2: 'US', map_country: 'United States', map_city: 'Los Angeles', location_source: 'initiative_override' });
-        }
-      } else {
-        result.push(row);
-      }
-    }
-    return result;
+    return applyPstOverride(base);
   }, [mapData, filters]);
 
   const headlineStats = useMemo(() => {
@@ -291,6 +228,18 @@ export function useGrantData(filters: FilterState) {
     [cleanData]
   );
 
+  // Most recent grant award date in the loaded data (dates are MM/DD/YYYY).
+  const lastDataDate = useMemo(() => {
+    let best: Date | null = null;
+    for (const r of cleanData) {
+      const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(r.grantAwardDate || '');
+      if (!m) continue;
+      const d = new Date(+m[3], +m[1] - 1, +m[2]);
+      if (!best || d > best) best = d;
+    }
+    return best;
+  }, [cleanData]);
+
   return {
     loading,
     error,
@@ -303,5 +252,6 @@ export function useGrantData(filters: FilterState) {
     grantCountries,
     allInitiatives,
     maxYear,
+    lastDataDate,
   };
 }

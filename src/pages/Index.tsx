@@ -7,6 +7,8 @@ import DataDashboard from '@/components/DataDashboard';
 import { useGrantData } from '@/hooks/use-grant-data';
 import type { FilterState, DrawerMode } from '@/lib/grant-types';
 import { DEFAULT_FILTERS } from '@/lib/grant-types';
+import { HAS_METHODOLOGY } from '@/lib/site-config';
+import { Link } from 'react-router-dom';
 
 type ViewMode = 'map' | 'data';
 
@@ -23,7 +25,7 @@ const Index = () => {
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('map');
 
-  const { loading, error, headlineStats, countryAgg, grantCountries, allInitiatives, filteredMap, filteredClean, maxYear } = useGrantData(filters);
+  const { loading, error, headlineStats, countryAgg, grantCountries, allInitiatives, filteredMap, filteredClean, maxYear, lastDataDate } = useGrantData(filters);
 
   // Extend year range to maxYear once data loads
   useEffect(() => {
@@ -44,9 +46,14 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Page header */}
       <header className="px-6 py-4 border-b bg-card flex items-center justify-between gap-4 flex-wrap">
-        <h1 className="text-xl font-semibold text-foreground tracking-tight">
-          J. Paul Getty Trust — Grant Explorer
-        </h1>
+        <div>
+          <h1 className="text-xl font-semibold text-foreground tracking-tight">
+            J. Paul Getty Trust — Grant Explorer
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Every grant awarded by the Getty Foundation since 1984 · Updated monthly
+          </p>
+        </div>
         <div role="tablist" aria-label="View mode" className="inline-flex rounded-full border border-input bg-background p-0.5">
           <button
             role="tab"
@@ -115,6 +122,7 @@ const Index = () => {
                   filteredClean={filteredClean}
                   filteredMap={filteredMap}
                   countryAgg={countryAgg}
+                  maxYear={maxYear}
                 />
               )}
 
@@ -164,6 +172,26 @@ const Index = () => {
           grantCountries={grantCountries}
           onClose={() => setSelectedCountry(null)}
         />
+
+        {/* Provenance footer */}
+        {!loading && !error && (
+          <footer className="pt-6 mt-2 border-t text-[11px] text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span>Data: Getty grants database</span>
+            <span aria-hidden="true">·</span>
+            <span>
+              Last data update:{' '}
+              {lastDataDate
+                ? lastDataDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                : '—'}
+            </span>
+            {HAS_METHODOLOGY && (
+              <>
+                <span aria-hidden="true">·</span>
+                <Link to="/methodology" className="underline hover:text-foreground">Methodology</Link>
+              </>
+            )}
+          </footer>
+        )}
       </main>
     </div>
   );

@@ -1,5 +1,6 @@
 export interface CleanGrant {
   grantId: string;
+  grantAwardDate: string;
   grantAwardYear: number;
   amountAwarded_USD: number;
   initiative: string;
@@ -45,7 +46,7 @@ export interface FilterState {
 export const DEFAULT_FILTERS: FilterState = {
   yearRange: [1984, 2026],
   orgOnly: false,
-  metric: 'none',
+  metric: 'grantCount',
   selectedInitiatives: null,
   minGrantAmount: 0,
   minGrantCountPerCountry: 1,

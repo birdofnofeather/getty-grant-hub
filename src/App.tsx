@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import Methodology from "./pages/Methodology.tsx";
+import { HAS_METHODOLOGY } from "@/lib/site-config";
 
 const queryClient = new QueryClient();
 
@@ -16,6 +18,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          {HAS_METHODOLOGY && <Route path="/methodology" element={<Methodology />} />}
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

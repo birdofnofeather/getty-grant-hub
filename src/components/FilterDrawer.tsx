@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { X, Search, RotateCcw } from 'lucide-react';
+import { X, Search, RotateCcw, Info } from 'lucide-react';
 import type { FilterState, ChoroplethMetric, DrawerMode } from '@/lib/grant-types';
 import { DEFAULT_FILTERS, CURRENT_INITIATIVES, PAST_INITIATIVES } from '@/lib/grant-types';
+import { HAS_METHODOLOGY } from '@/lib/site-config';
+import { Link } from 'react-router-dom';
 
 interface FilterDrawerProps {
   mode: DrawerMode;
@@ -124,6 +126,12 @@ export default function FilterDrawer({ mode, filters, onChange, allInitiatives, 
       <div className="flex items-center gap-2">
         <Switch checked={filters.orgOnly} onCheckedChange={(v) => onChange({ orgOnly: v })} />
         <Label className="text-sm">Organizational grants only</Label>
+        {HAS_METHODOLOGY && (
+          <Link to="/methodology#individuals" title="How are individual grants identified?"
+            className="text-muted-foreground hover:text-foreground">
+            <Info className="h-3.5 w-3.5" />
+          </Link>
+        )}
       </div>
 
       {/* Advanced controls */}
