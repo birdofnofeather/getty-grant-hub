@@ -3,6 +3,7 @@ import { ChevronUp, ChevronDown, ExternalLink } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { CleanGrant, MapGrant, CountryAgg } from '@/lib/grant-types';
+import type { Adjuster } from '@/lib/inflation';
 
 function formatUSD(n: number): string {
   return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
@@ -21,10 +22,11 @@ interface CountryDetailPanelProps {
   filteredMap: MapGrant[];
   filteredClean: CleanGrant[];
   grantCountries: Map<string, { iso2: string; name: string }[]>;
+  adjust?: Adjuster;
   onClose: () => void;
 }
 
-export default function CountryDetailPanel({ iso2, countryAgg, filteredMap, filteredClean, grantCountries, onClose }: CountryDetailPanelProps) {
+export default function CountryDetailPanel({ iso2, countryAgg, filteredMap, filteredClean, grantCountries, adjust, onClose }: CountryDetailPanelProps) {
   const [tab, setTab] = useState<Tab>('grants');
   const [sortField, setSortField] = useState<SortField>('year');
   const [sortAsc, setSortAsc] = useState(false);
