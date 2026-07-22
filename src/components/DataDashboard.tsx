@@ -8,14 +8,19 @@ import {
 import type { CleanGrant, MapGrant, CountryAgg } from '@/lib/grant-types';
 import {
   perYear, peopleVsOrgByYear, topInitiatives, avgGrantSize,
-  topCountriesExUS, sizeBuckets, cumulativeUSD,
+  topCountriesExUS, topCountriesExUSByUsd, sizeBuckets, cumulativeUSD,
 } from '@/lib/dashboard-data';
+import type { Adjuster } from '@/lib/inflation';
+import { CPI_REFERENCE_YEAR } from '@/lib/inflation';
 
 interface Props {
   filteredClean: CleanGrant[];
   filteredMap: MapGrant[];
   countryAgg: Map<string, CountryAgg>;
   maxYear: number;
+  adjust: Adjuster;
+  inflationAdjust: boolean;
+  excludeUS: boolean;
 }
 
 const COLORS = {
