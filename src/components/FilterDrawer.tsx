@@ -131,6 +131,31 @@ export default function FilterDrawer({ mode, filters, onChange, allInitiatives, 
         )}
       </div>
 
+      {/* Exclude U.S. */}
+      <div className="flex items-center gap-2">
+        <Switch checked={filters.excludeUS} onCheckedChange={(v) => onChange({ excludeUS: v })} />
+        <Label className="text-sm">Exclude U.S. grants</Label>
+        {HAS_METHODOLOGY && (
+          <Link to="/methodology#exclude-us" title="How U.S. exclusion is applied"
+            className="text-muted-foreground hover:text-foreground">
+            <Info className="h-3.5 w-3.5" />
+          </Link>
+        )}
+      </div>
+
+      {/* Inflation-adjust */}
+      <div className="flex items-center gap-2">
+        <Switch checked={filters.inflationAdjust} onCheckedChange={(v) => onChange({ inflationAdjust: v })} />
+        <Label className="text-sm">Adjust dollars for inflation (2025 USD)</Label>
+        {HAS_METHODOLOGY && (
+          <Link to="/methodology#inflation" title="How inflation adjustment works"
+            className="text-muted-foreground hover:text-foreground">
+            <Info className="h-3.5 w-3.5" />
+          </Link>
+        )}
+      </div>
+
+
       {/* Advanced controls */}
       {isAdvanced && (
         <>
