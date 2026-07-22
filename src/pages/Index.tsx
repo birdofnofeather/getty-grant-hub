@@ -207,8 +207,10 @@ const Index = () => {
           filteredMap={filteredMap}
           filteredClean={filteredClean}
           grantCountries={grantCountries}
+          adjust={adjust}
           onClose={() => setSelectedCountry(null)}
         />
+
 
         {/* Provenance footer */}
         {!loading && !error && (
