@@ -52,6 +52,8 @@ export default function CountryDetailPanel({ iso2, countryAgg, filteredMap, filt
       seen.add(row.grantId);
       const clean = cleanMap.get(row.grantId);
       const full = clean ? clean.amountAwarded_USD : row.amountAwarded_USD;
+      const year = clean ? clean.grantAwardYear : row.grantAwardYear;
+      const adjustedFull = adjust ? adjust(full, year) : (full > 0 ? full : 0);
       const countries = grantCountries.get(row.grantId) || [];
       const denom = countries.length || 1;
       const others = countries.filter((c) => c.iso2 !== iso2).map((c) => c.name);
@@ -59,8 +61,8 @@ export default function CountryDetailPanel({ iso2, countryAgg, filteredMap, filt
         grantId: row.grantId,
         year: row.grantAwardYear,
         grantee: row.grantee_name,
-        amount: full > 0 ? full / denom : 0,
-        fullAmount: full,
+        amount: adjustedFull > 0 ? adjustedFull / denom : 0,
+        fullAmount: adjustedFull,
         others,
         initiative: row.initiative,
         title: row.projectTitle_clean,
