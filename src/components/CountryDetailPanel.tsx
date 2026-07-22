@@ -80,7 +80,7 @@ export default function CountryDetailPanel({ iso2, countryAgg, filteredMap, filt
       }
     });
     return result;
-  }, [iso2, filteredMap, filteredClean, grantCountries, sortField, sortAsc]);
+  }, [iso2, filteredMap, filteredClean, grantCountries, sortField, sortAsc, adjust]);
 
   // Grantee rollup: shares sum to the country's Total Granted (split-aware).
   const grantees = useMemo(() => {
