@@ -30,7 +30,7 @@ const Index = () => {
   const [viewMode, setViewMode] = useState<ViewMode>(initialUrl.viewMode ?? 'map');
   const yearFromUrl = initialUrl.yearProvided;
 
-  const { loading, error, headlineStats, countryAgg, grantCountries, allInitiatives, initiativeGroups, filteredMap, filteredClean, maxYear, lastDataDate, fullDataReady } = useGrantData(filters);
+  const { loading, error, headlineStats, countryAgg, grantCountries, adjust, allInitiatives, initiativeGroups, filteredMap, filteredClean, maxYear, lastDataDate, fullDataReady } = useGrantData(filters);
 
   // Extend year range to maxYear once data loads
   useEffect(() => {
@@ -142,6 +142,9 @@ const Index = () => {
                   filteredMap={filteredMap}
                   countryAgg={countryAgg}
                   maxYear={maxYear}
+                  adjust={adjust}
+                  inflationAdjust={filters.inflationAdjust}
+                  excludeUS={filters.excludeUS}
                 />
               )}
 
@@ -204,8 +207,10 @@ const Index = () => {
           filteredMap={filteredMap}
           filteredClean={filteredClean}
           grantCountries={grantCountries}
+          adjust={adjust}
           onClose={() => setSelectedCountry(null)}
         />
+
 
         {/* Provenance footer */}
         {!loading && !error && (

@@ -3,6 +3,7 @@ import { ChevronUp, ChevronDown, ExternalLink } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { CleanGrant, MapGrant, CountryAgg } from '@/lib/grant-types';
+import type { Adjuster } from '@/lib/inflation';
 
 function formatUSD(n: number): string {
   return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
@@ -21,10 +22,11 @@ interface CountryDetailPanelProps {
   filteredMap: MapGrant[];
   filteredClean: CleanGrant[];
   grantCountries: Map<string, { iso2: string; name: string }[]>;
+  adjust?: Adjuster;
   onClose: () => void;
 }
 
-export default function CountryDetailPanel({ iso2, countryAgg, filteredMap, filteredClean, grantCountries, onClose }: CountryDetailPanelProps) {
+export default function CountryDetailPanel({ iso2, countryAgg, filteredMap, filteredClean, grantCountries, adjust, onClose }: CountryDetailPanelProps) {
   const [tab, setTab] = useState<Tab>('grants');
   const [sortField, setSortField] = useState<SortField>('year');
   const [sortAsc, setSortAsc] = useState(false);
@@ -50,6 +52,8 @@ export default function CountryDetailPanel({ iso2, countryAgg, filteredMap, filt
       seen.add(row.grantId);
       const clean = cleanMap.get(row.grantId);
       const full = clean ? clean.amountAwarded_USD : row.amountAwarded_USD;
+      const year = clean ? clean.grantAwardYear : row.grantAwardYear;
+      const adjustedFull = adjust ? adjust(full, year) : (full > 0 ? full : 0);
       const countries = grantCountries.get(row.grantId) || [];
       const denom = countries.length || 1;
       const others = countries.filter((c) => c.iso2 !== iso2).map((c) => c.name);
@@ -57,8 +61,8 @@ export default function CountryDetailPanel({ iso2, countryAgg, filteredMap, filt
         grantId: row.grantId,
         year: row.grantAwardYear,
         grantee: row.grantee_name,
-        amount: full > 0 ? full / denom : 0,
-        fullAmount: full,
+        amount: adjustedFull > 0 ? adjustedFull / denom : 0,
+        fullAmount: adjustedFull,
         others,
         initiative: row.initiative,
         title: row.projectTitle_clean,
@@ -76,7 +80,7 @@ export default function CountryDetailPanel({ iso2, countryAgg, filteredMap, filt
       }
     });
     return result;
-  }, [iso2, filteredMap, filteredClean, grantCountries, sortField, sortAsc]);
+  }, [iso2, filteredMap, filteredClean, grantCountries, sortField, sortAsc, adjust]);
 
   // Grantee rollup: shares sum to the country's Total Granted (split-aware).
   const grantees = useMemo(() => {

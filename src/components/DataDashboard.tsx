@@ -8,14 +8,19 @@ import {
 import type { CleanGrant, MapGrant, CountryAgg } from '@/lib/grant-types';
 import {
   perYear, peopleVsOrgByYear, topInitiatives, avgGrantSize,
-  topCountriesExUS, sizeBuckets, cumulativeUSD,
+  topCountriesExUS, topCountriesExUSByUsd, sizeBuckets, cumulativeUSD,
 } from '@/lib/dashboard-data';
+import type { Adjuster } from '@/lib/inflation';
+import { CPI_REFERENCE_YEAR } from '@/lib/inflation';
 
 interface Props {
   filteredClean: CleanGrant[];
   filteredMap: MapGrant[];
   countryAgg: Map<string, CountryAgg>;
   maxYear: number;
+  adjust: Adjuster;
+  inflationAdjust: boolean;
+  excludeUS: boolean;
 }
 
 const COLORS = {
@@ -69,18 +74,24 @@ const Pills = ({ options, value, onChange }: { options: { v: string; label: stri
 
 const commonXAxis = { interval: 'preserveStartEnd' as const, minTickGap: 20, tick: { fill: 'hsl(var(--muted-foreground))', fontSize: 11 } };
 
-const DataDashboard = ({ filteredClean, countryAgg, maxYear }: Props) => {
+const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAdjust, excludeUS }: Props) => {
   const [initBy, setInitBy] = useState<'usd' | 'count'>('usd');
   const [povBy, setPovBy] = useState<'count' | 'usd'>('count');
+  const [countryBy, setCountryBy] = useState<'usd' | 'count'>('usd');
 
-  const years = useMemo(() => perYear(filteredClean), [filteredClean]);
-  const pov = useMemo(() => peopleVsOrgByYear(filteredClean), [filteredClean]);
-  const inits = useMemo(() => topInitiatives(filteredClean, initBy), [filteredClean, initBy]);
-  const avg = useMemo(() => avgGrantSize(filteredClean, 10), [filteredClean]);
-  const countries = useMemo(() => topCountriesExUS(countryAgg), [countryAgg]);
+  const years = useMemo(() => perYear(filteredClean, adjust), [filteredClean, adjust]);
+  const pov = useMemo(() => peopleVsOrgByYear(filteredClean, adjust), [filteredClean, adjust]);
+  const inits = useMemo(() => topInitiatives(filteredClean, initBy, 12, adjust), [filteredClean, initBy, adjust]);
+  const avg = useMemo(() => avgGrantSize(filteredClean, 10, 12, adjust), [filteredClean, adjust]);
+  const countries = useMemo(
+    () => (countryBy === 'usd' ? topCountriesExUSByUsd(countryAgg) : topCountriesExUS(countryAgg)),
+    [countryAgg, countryBy]
+  );
   const buckets = useMemo(() => sizeBuckets(filteredClean), [filteredClean]);
   const cumulative = useMemo(() => cumulativeUSD(years), [years]);
   const partialNote = `${maxYear} is a partial year`;
+  const dollarNote = inflationAdjust ? `in ${CPI_REFERENCE_YEAR} dollars (CPI-U)` : '';
+  const withDollarNote = (s: string) => dollarNote ? `${s} · ${dollarNote}` : s;
 
   if (filteredClean.length === 0) {
     return (
@@ -97,7 +108,7 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear }: Props) => {
       {/* NEW centerpiece: People vs Organizations over time */}
       <ChartCard
         title="People vs. Organizations Over Time"
-        subtitle={`Grants to individuals (fellows, interns, scholars) vs. institutions · ${partialNote}`}
+        subtitle={withDollarNote(`Grants to individuals (fellows, interns, scholars) vs. institutions · ${partialNote}`)}
         action={<Pills options={[{ v: 'count', label: 'Grants' }, { v: 'usd', label: 'Dollars' }]} value={povBy} onChange={(v) => setPovBy(v as 'count' | 'usd')} />}
         height={300}
       >
@@ -112,7 +123,7 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear }: Props) => {
         </BarChart>
       </ChartCard>
 
-      <ChartCard title="Total USD Awarded per Year" subtitle={`Sum of amount awarded each year · ${partialNote}`}>
+      <ChartCard title="Total USD Awarded per Year" subtitle={withDollarNote(`Sum of amount awarded each year · ${partialNote}`)}>
         <BarChart data={years} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis dataKey="year" {...commonXAxis} />
@@ -138,7 +149,7 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear }: Props) => {
 
       <ChartCard
         title="Top Initiatives"
-        subtitle={initBy === 'usd' ? 'By total USD awarded' : 'By number of grants'}
+        subtitle={initBy === 'usd' ? withDollarNote('By total USD awarded') : 'By number of grants'}
         action={<Pills options={[{ v: 'usd', label: 'By dollars' }, { v: 'count', label: 'By grant count' }]} value={initBy} onChange={(v) => setInitBy(v as 'usd' | 'count')} />}
         height={360}
       >
@@ -151,7 +162,7 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear }: Props) => {
         </BarChart>
       </ChartCard>
 
-      <ChartCard title="Avg Grant Size by Initiative" subtitle="Average USD per grant · initiatives with ≥ 10 grants" height={360}>
+      <ChartCard title="Avg Grant Size by Initiative" subtitle={withDollarNote('Average USD per grant · initiatives with ≥ 10 grants')} height={360}>
         <BarChart data={avg} layout="vertical" margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={formatShortUSD} />
@@ -162,20 +173,25 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear }: Props) => {
       </ChartCard>
 
       <ChartCard
-        title="Top Countries (excluding U.S.)"
-        subtitle={`U.S.: ${countries.usCount.toLocaleString()} grants — shown separately so other countries are readable`}
+        title={excludeUS ? 'Top Countries' : 'Top Countries (excluding U.S.)'}
+        subtitle={
+          excludeUS
+            ? (countryBy === 'usd' ? withDollarNote('By total USD awarded') : 'By number of grants')
+            : `U.S.: ${countries.usCount.toLocaleString()} grants${countryBy === 'usd' ? ` · ${formatShortUSD(countries.usUsd)}` : ''} — shown separately so other countries are readable`
+        }
+        action={<Pills options={[{ v: 'usd', label: 'By dollars' }, { v: 'count', label: 'By grant count' }]} value={countryBy} onChange={(v) => setCountryBy(v as 'usd' | 'count')} />}
         height={360}
       >
         <BarChart data={countries.bars} layout="vertical" margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+          <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={countryBy === 'usd' ? formatShortUSD : undefined} />
           <YAxis type="category" dataKey="name" width={140} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-          <Tooltip contentStyle={tooltipStyle} />
-          <Bar dataKey="count" fill={COLORS.amber} radius={[0, 3, 3, 0]} name="Grants" />
+          <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => (countryBy === 'usd' ? formatShortUSD(v) : v.toLocaleString())} />
+          <Bar dataKey={countryBy} fill={countryBy === 'usd' ? COLORS.amber : COLORS.accent} radius={[0, 3, 3, 0]} name={countryBy === 'usd' ? 'USD' : 'Grants'} />
         </BarChart>
       </ChartCard>
 
-      <ChartCard title="Grant Size Distribution" subtitle="Number of grants by award amount">
+      <ChartCard title="Grant Size Distribution" subtitle="Number of grants by award amount (nominal)">
         <BarChart data={buckets} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis dataKey="label" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
@@ -185,7 +201,7 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear }: Props) => {
         </BarChart>
       </ChartCard>
 
-      <ChartCard title="Cumulative USD Over Time" subtitle={`Running total of USD awarded · ${partialNote}`}>
+      <ChartCard title="Cumulative USD Over Time" subtitle={withDollarNote(`Running total of USD awarded · ${partialNote}`)}>
         <LineChart data={cumulative} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis dataKey="year" {...commonXAxis} />

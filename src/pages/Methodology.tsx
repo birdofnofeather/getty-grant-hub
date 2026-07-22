@@ -91,16 +91,48 @@ const Methodology = () => (
         </p>
       </Section>
 
+      <Section id="exclude-us" title="Excluding U.S. grants">
+        <p>
+          Toggling <em>Exclude U.S. grants</em> hides any grant that touches the United States on the map.
+          It is all-or-nothing per grant: a cross-border grant that funds work in both the U.S. and, say,
+          Mexico is removed from every view — including its Mexico row — because keeping only the
+          non-U.S. portion would misrepresent a project whose center of gravity is in Los Angeles or New
+          York. Grant counts and dollar totals both drop accordingly.
+        </p>
+      </Section>
+
+      <Section id="inflation" title="Adjusting for inflation">
+        <p>
+          Toggling <em>Adjust dollars for inflation</em> restates every grant in {`${2025}`}-dollar terms
+          using the U.S. Bureau of Labor Statistics'{' '}
+          <a href="https://data.bls.gov/timeseries/CUUR0000SA0" target="_blank" rel="noopener noreferrer"
+             className="underline hover:text-foreground">
+            Consumer Price Index for All Urban Consumers (CPI-U)
+          </a>
+          , annual averages, 1982-84 = 100. A grant awarded in year Y is multiplied by
+          CPI(2025) / CPI(Y), so a $100,000 grant in 1990 becomes roughly $246,000 in today's dollars.
+        </p>
+        <p>
+          Reference year 2025 is the most recent complete annual CPI release from BLS. Grants awarded in
+          the current, still-in-progress year are treated as already in reference-year dollars (a factor
+          of 1), which slightly understates their real value — this is called out in each chart's
+          subtitle. When inflation adjustment is on, headline totals, country totals, and every dollar
+          series in the Data view use adjusted amounts; grant counts and the Grant Size Distribution
+          (which is about award size at the time) remain nominal.
+        </p>
+      </Section>
+
       <Section id="limits" title="What this data can and cannot show">
         <p>This site is a faithful window onto Getty's grant records, but those records have limits:</p>
         <ul className="list-disc pl-5 space-y-1">
           <li>There is no subject or discipline category — conservation, art history, and museum grants can only be inferred from program names.</li>
           <li>Locations are country-level; Los Angeles is the only city the source data pinpoints.</li>
-          <li>Dollar amounts are as-awarded (not adjusted for inflation), so older grants look smaller than their real value.</li>
+          <li>Dollar amounts default to as-awarded (nominal); use the inflation-adjust toggle to see them in 2025 dollars.</li>
           <li>There is no information on grant outcomes or on the individuals funded.</li>
           <li>Ten grants have no recoverable amount, and the current year is always incomplete.</li>
         </ul>
       </Section>
+
 
       <p className="mt-10 text-xs text-muted-foreground">
         This methodology is kept alongside the data itself so any figure on the site can be traced back to

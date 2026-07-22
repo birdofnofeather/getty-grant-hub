@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
 import type { CleanGrant, MapGrant, FilterState, CountryAgg, AggData, InitiativeGroups } from '@/lib/grant-types';
 import { stripHtml, isIndividualGrant, applyPstOverride } from '@/lib/classification';
+import { makeAdjuster } from '@/lib/inflation';
 
 const CLEAN_SOURCES = [
   'https://raw.githubusercontent.com/birdofnofeather/getty-grant-hub/main/getty_grants_clean.csv',
@@ -42,7 +43,9 @@ function isFullScope(filters: FilterState, maxYear: number): boolean {
     filters.yearRange[0] <= 1984 &&
     filters.yearRange[1] >= maxYear &&
     filters.selectedInitiatives === null &&
-    (filters.minGrantAmount || 0) <= 0
+    (filters.minGrantAmount || 0) <= 0 &&
+    !filters.excludeUS &&
+    !filters.inflationAdjust
   );
 }
 
@@ -164,24 +167,39 @@ export function useGrantData(filters: FilterState) {
       });
   }, []);
 
-  const filteredClean = useMemo(() => applyBaseFilters(cleanData, filters), [cleanData, filters]);
+  // Grants that touch the US on the map (any row where map_iso2 === 'US').
+  // Used to implement "Exclude U.S." — an all-or-nothing filter that removes
+  // the grant from every view, including its non-US country rows.
+  const usGrantIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of mapData) if (r.map_iso2 === 'US') s.add(r.grantId);
+    return s;
+  }, [mapData]);
+
+  const adjust = useMemo(() => makeAdjuster(filters.inflationAdjust), [filters.inflationAdjust]);
+
+  const filteredClean = useMemo(() => {
+    const base = applyBaseFilters(cleanData, filters);
+    return filters.excludeUS ? base.filter((r) => !usGrantIds.has(r.grantId)) : base;
+  }, [cleanData, filters, usGrantIds]);
   const filteredMap = useMemo(() => {
-    const base = applyBaseFilters(mapData, filters);
+    let base = applyBaseFilters(mapData, filters);
+    if (filters.excludeUS) base = base.filter((r) => !usGrantIds.has(r.grantId));
     return applyPstOverride(base);
-  }, [mapData, filters]);
+  }, [mapData, filters, usGrantIds]);
 
   const headlineStats = useMemo(() => {
     // Before the full CSVs arrive, serve the default (and org-only) totals from the
     // tiny precomputed aggregates so the headline is correct and instant.
-    if (!csvReady && aggData) {
+    if (!csvReady && aggData && !filters.excludeUS && !filters.inflationAdjust) {
       const h = filters.orgOnly ? aggData.headlineOrg : aggData.headline;
       return { totalUSD: h.totalUSD, grantCount: h.grantCount, hasPartialYear: filters.yearRange[1] >= aggData.maxYear };
     }
-    const totalUSD = filteredClean.reduce((s, r) => s + (r.amountAwarded_USD > 0 ? r.amountAwarded_USD : 0), 0);
+    const totalUSD = filteredClean.reduce((s, r) => s + adjust(r.amountAwarded_USD, r.grantAwardYear), 0);
     const grantCount = filteredClean.length;
     const hasPartialYear = filteredClean.some((r) => r.is_partial_year && r.grantAwardYear >= filters.yearRange[0] && r.grantAwardYear <= filters.yearRange[1]);
     return { totalUSD, grantCount, hasPartialYear };
-  }, [csvReady, aggData, filters.orgOnly, filteredClean, filters.yearRange]);
+  }, [csvReady, aggData, filters.orgOnly, filters.excludeUS, filters.inflationAdjust, filteredClean, filters.yearRange, adjust]);
 
   // Multi-country dollar split (added July 2026): a grant that serves N countries
   // contributes amount/N to each country's total, so per-country totals no longer
@@ -261,7 +279,8 @@ export function useGrantData(filters: FilterState) {
         const full = clean && clean.amountAwarded_USD > 0 ? clean.amountAwarded_USD : 0;
         if (full <= 0) continue;
         const denom = grantCountries.get(gid)?.length || 1;
-        total += full / denom;
+        const year = clean ? clean.grantAwardYear : 0;
+        total += adjust(full, year) / denom;
       }
       agg.totalUSD = total;
     }
@@ -337,6 +356,7 @@ export function useGrantData(filters: FilterState) {
     headlineStats,
     countryAgg,
     grantCountries,
+    adjust,
     allInitiatives,
     initiativeGroups,
     maxYear,

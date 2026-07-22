@@ -42,6 +42,8 @@ export type DrawerMode = 'none' | 'basic' | 'advanced';
 export interface FilterState {
   yearRange: [number, number];
   orgOnly: boolean;
+  excludeUS: boolean;
+  inflationAdjust: boolean;
   metric: ChoroplethMetric;
   selectedInitiatives: string[] | null; // null = all
   minGrantAmount: number;
@@ -51,6 +53,8 @@ export interface FilterState {
 export const DEFAULT_FILTERS: FilterState = {
   yearRange: [1984, 2026],
   orgOnly: false,
+  excludeUS: false,
+  inflationAdjust: false,
   metric: 'grantCount',
   selectedInitiatives: null,
   minGrantAmount: 0,
