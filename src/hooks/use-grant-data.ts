@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
 import type { CleanGrant, MapGrant, FilterState, CountryAgg, AggData, InitiativeGroups } from '@/lib/grant-types';
 import { stripHtml, isIndividualGrant, applyPstOverride } from '@/lib/classification';
+import { makeAdjuster } from '@/lib/inflation';
 
 const CLEAN_SOURCES = [
   'https://raw.githubusercontent.com/birdofnofeather/getty-grant-hub/main/getty_grants_clean.csv',
