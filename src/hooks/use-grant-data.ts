@@ -279,7 +279,8 @@ export function useGrantData(filters: FilterState) {
         const full = clean && clean.amountAwarded_USD > 0 ? clean.amountAwarded_USD : 0;
         if (full <= 0) continue;
         const denom = grantCountries.get(gid)?.length || 1;
-        total += full / denom;
+        const year = clean ? clean.grantAwardYear : 0;
+        total += adjust(full, year) / denom;
       }
       agg.totalUSD = total;
     }
