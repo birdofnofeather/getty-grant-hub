@@ -142,6 +142,9 @@ const Index = () => {
                   filteredMap={filteredMap}
                   countryAgg={countryAgg}
                   maxYear={maxYear}
+                  adjust={adjust}
+                  inflationAdjust={filters.inflationAdjust}
+                  excludeUS={filters.excludeUS}
                 />
               )}
 
