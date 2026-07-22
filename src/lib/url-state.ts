@@ -52,6 +52,8 @@ export function parseState(search: string, knownInitiatives?: string[]): ParsedU
   }
 
   if (p.get('org') === '1') filters.orgOnly = true;
+  if (p.get('nous') === '1') filters.excludeUS = true;
+  if (p.get('infl') === '1') filters.inflationAdjust = true;
 
   const m = p.get('m');
   if (m && (VALID_METRICS as string[]).includes(m)) filters.metric = m as ChoroplethMetric;
