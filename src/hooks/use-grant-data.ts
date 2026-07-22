@@ -356,6 +356,7 @@ export function useGrantData(filters: FilterState) {
     headlineStats,
     countryAgg,
     grantCountries,
+    adjust,
     allInitiatives,
     initiativeGroups,
     maxYear,
