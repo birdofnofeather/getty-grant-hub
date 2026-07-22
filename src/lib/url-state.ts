@@ -18,6 +18,8 @@ export function serializeState(filters: FilterState, viewMode: ViewMode, maxYear
   const [y0, y1] = filters.yearRange;
   if (y0 > DEFAULT_FILTERS.yearRange[0] || y1 < maxYear) p.set('y', `${y0}-${y1}`);
   if (filters.orgOnly) p.set('org', '1');
+  if (filters.excludeUS) p.set('nous', '1');
+  if (filters.inflationAdjust) p.set('infl', '1');
   if (filters.metric !== DEFAULT_FILTERS.metric) p.set('m', filters.metric);
   if (filters.selectedInitiatives !== null) {
     for (const i of filters.selectedInitiatives) p.append('init', i);
