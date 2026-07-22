@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactElement } from 'react';
 import {
   ResponsiveContainer,
   BarChart, Bar, Cell,
-  LineChart, Line,
+  ComposedChart, Line,
   XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from 'recharts';
 import type { CleanGrant, MapGrant, CountryAgg } from '@/lib/grant-types';
@@ -29,13 +29,17 @@ const COLORS = {
   accent: 'hsl(217 91% 60%)',   // blue — organizations / counts
   amber: 'hsl(32 95% 44%)',     // amber — dollars
   people: 'hsl(160 84% 39%)',   // teal — individuals
+  positive: 'hsl(160 84% 39%)',
+  negative: 'hsl(0 72% 55%)',
 };
 
 function formatShortUSD(n: number): string {
-  if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
-  if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
-  if (n >= 1e3) return `$${(n / 1e3).toFixed(0)}K`;
-  return `$${n}`;
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(1)}B`;
+  if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(1)}M`;
+  if (abs >= 1e3) return `${sign}$${(abs / 1e3).toFixed(0)}K`;
+  return `${sign}$${abs}`;
 }
 
 const tooltipStyle = {
@@ -88,7 +92,21 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
     [countryAgg, countryBy]
   );
   const buckets = useMemo(() => sizeBuckets(filteredClean), [filteredClean]);
-  const cumulative = useMemo(() => cumulativeUSD(years), [years]);
+  const cumulative = useMemo(() => {
+    const cum = cumulativeUSD(years);
+    return years.map((y, i) => {
+      const prev = i > 0 ? years[i - 1].usd : 0;
+      const variance = i > 0 ? y.usd - prev : 0;
+      const pct = i > 0 && prev > 0 ? ((y.usd - prev) / prev) * 100 : null;
+      return {
+        year: y.year,
+        annual: y.usd,
+        variance,
+        pct,
+        cumulative: cum[i].cumulative,
+      };
+    });
+  }, [years]);
   const partialNote = `${maxYear} is a partial year`;
   const dollarNote = inflationAdjust ? `in ${CPI_REFERENCE_YEAR} dollars (CPI-U)` : '';
   const withDollarNote = (s: string) => dollarNote ? `${s} · ${dollarNote}` : s;
@@ -103,26 +121,26 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
 
   const barOpacity = (year: number) => (year === maxYear ? 0.45 : 1);
 
+  const CumulativeTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ payload: typeof cumulative[number] }>; label?: number }) => {
+    if (!active || !payload || !payload.length) return null;
+    const d = payload[0].payload;
+    const pctStr = d.pct === null ? '—' : `${d.pct >= 0 ? '+' : ''}${d.pct.toFixed(1)}%`;
+    const pctColor = d.pct === null ? 'hsl(var(--muted-foreground))' : d.pct >= 0 ? COLORS.positive : COLORS.negative;
+    return (
+      <div style={tooltipStyle} className="p-2.5">
+        <div className="font-semibold text-xs mb-1">{label}</div>
+        <div className="text-[11px] space-y-0.5">
+          <div>Annual: <span className="font-medium">{formatShortUSD(d.annual)}</span></div>
+          <div>YoY change: <span className="font-medium" style={{ color: pctColor }}>{pctStr}</span></div>
+          <div>Cumulative: <span className="font-medium">{formatShortUSD(d.cumulative)}</span></div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {/* NEW centerpiece: People vs Organizations over time */}
-      <ChartCard
-        title="People vs. Organizations Over Time"
-        subtitle={withDollarNote(`Grants to individuals (fellows, interns, scholars) vs. institutions · ${partialNote}`)}
-        action={<Pills options={[{ v: 'count', label: 'Grants' }, { v: 'usd', label: 'Dollars' }]} value={povBy} onChange={(v) => setPovBy(v as 'count' | 'usd')} />}
-        height={300}
-      >
-        <BarChart data={pov} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis dataKey="year" {...commonXAxis} />
-          <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={(v: number) => (povBy === 'usd' ? formatShortUSD(v) : String(v))} />
-          <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => (povBy === 'usd' ? formatShortUSD(v) : v.toLocaleString())} />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
-          <Bar dataKey={povBy === 'usd' ? 'indUsd' : 'indCount'} stackId="a" fill={COLORS.people} name="Individuals" radius={[0, 0, 0, 0]} />
-          <Bar dataKey={povBy === 'usd' ? 'orgUsd' : 'orgCount'} stackId="a" fill={COLORS.accent} name="Organizations" radius={[2, 2, 0, 0]} />
-        </BarChart>
-      </ChartCard>
-
+      {/* 1. Total USD Awarded per Year */}
       <ChartCard title="Total USD Awarded per Year" subtitle={withDollarNote(`Sum of amount awarded each year · ${partialNote}`)}>
         <BarChart data={years} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -135,6 +153,7 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
         </BarChart>
       </ChartCard>
 
+      {/* 2. Grants per Year */}
       <ChartCard title="Grants per Year" subtitle={`Number of grants awarded each year · ${partialNote}`}>
         <BarChart data={years} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -147,6 +166,7 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
         </BarChart>
       </ChartCard>
 
+      {/* 3. Top Initiatives */}
       <ChartCard
         title="Top Initiatives"
         subtitle={initBy === 'usd' ? withDollarNote('By total USD awarded') : 'By number of grants'}
@@ -162,6 +182,7 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
         </BarChart>
       </ChartCard>
 
+      {/* 4. Avg Grant Size by Initiative */}
       <ChartCard title="Avg Grant Size by Initiative" subtitle={withDollarNote('Average USD per grant · initiatives with ≥ 10 grants')} height={360}>
         <BarChart data={avg} layout="vertical" margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -172,6 +193,7 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
         </BarChart>
       </ChartCard>
 
+      {/* 5. Top Countries */}
       <ChartCard
         title={excludeUS ? 'Top Countries' : 'Top Countries (excluding U.S.)'}
         subtitle={
@@ -191,6 +213,7 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
         </BarChart>
       </ChartCard>
 
+      {/* 6. Grant Size Distribution */}
       <ChartCard title="Grant Size Distribution" subtitle="Number of grants by award amount (nominal)">
         <BarChart data={buckets} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -201,15 +224,40 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
         </BarChart>
       </ChartCard>
 
-      <ChartCard title="Cumulative USD Over Time" subtitle={withDollarNote(`Running total of USD awarded · ${partialNote}`)}>
-        <LineChart data={cumulative} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
+      {/* 7. People vs. Organizations */}
+      <ChartCard
+        title="People vs. Organizations Over Time"
+        subtitle={withDollarNote(`Grants to individuals (fellows, interns, scholars) vs. institutions · ${partialNote}`)}
+        action={<Pills options={[{ v: 'count', label: 'Grants' }, { v: 'usd', label: 'Dollars' }]} value={povBy} onChange={(v) => setPovBy(v as 'count' | 'usd')} />}
+        height={300}
+      >
+        <BarChart data={pov} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis dataKey="year" {...commonXAxis} />
-          <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={formatShortUSD} />
-          <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => formatShortUSD(v)} />
+          <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={(v: number) => (povBy === 'usd' ? formatShortUSD(v) : String(v))} />
+          <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => (povBy === 'usd' ? formatShortUSD(v) : v.toLocaleString())} />
           <Legend wrapperStyle={{ fontSize: 11 }} />
-          <Line type="monotone" dataKey="cumulative" stroke={COLORS.primary} strokeWidth={2} dot={false} name="Cumulative USD" />
-        </LineChart>
+          <Bar dataKey={povBy === 'usd' ? 'indUsd' : 'indCount'} stackId="a" fill={COLORS.people} name="Individuals" radius={[0, 0, 0, 0]} />
+          <Bar dataKey={povBy === 'usd' ? 'orgUsd' : 'orgCount'} stackId="a" fill={COLORS.accent} name="Organizations" radius={[2, 2, 0, 0]} />
+        </BarChart>
+      </ChartCard>
+
+      {/* 8. Cumulative USD with annual variance */}
+      <ChartCard title="Cumulative USD Over Time" subtitle={withDollarNote(`Running total with annual change · ${partialNote}`)}>
+        <ComposedChart data={cumulative} margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+          <XAxis dataKey="year" {...commonXAxis} />
+          <YAxis yAxisId="left" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={formatShortUSD} />
+          <YAxis yAxisId="right" orientation="right" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={formatShortUSD} />
+          <Tooltip content={<CumulativeTooltip />} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Bar yAxisId="left" dataKey="variance" name="Annual change" radius={[3, 3, 0, 0]}>
+            {cumulative.map((d) => (
+              <Cell key={d.year} fill={d.variance >= 0 ? COLORS.positive : COLORS.negative} />
+            ))}
+          </Bar>
+          <Line yAxisId="right" type="monotone" dataKey="cumulative" stroke={COLORS.primary} strokeWidth={2} dot={false} name="Cumulative USD" />
+        </ComposedChart>
       </ChartCard>
     </div>
   );
