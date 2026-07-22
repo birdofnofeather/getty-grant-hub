@@ -43,7 +43,9 @@ function isFullScope(filters: FilterState, maxYear: number): boolean {
     filters.yearRange[0] <= 1984 &&
     filters.yearRange[1] >= maxYear &&
     filters.selectedInitiatives === null &&
-    (filters.minGrantAmount || 0) <= 0
+    (filters.minGrantAmount || 0) <= 0 &&
+    !filters.excludeUS &&
+    !filters.inflationAdjust
   );
 }
 
