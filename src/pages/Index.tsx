@@ -147,6 +147,7 @@ const Index = () => {
                   filteredClean={filteredClean}
                   filteredMap={filteredMap}
                   countryAgg={countryAgg}
+                  grantCountries={grantCountries}
                   maxYear={maxYear}
                   adjust={adjust}
                   inflationAdjust={filters.inflationAdjust}
