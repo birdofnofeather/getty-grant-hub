@@ -72,10 +72,19 @@ function tooltipContent(agg: CountryAgg, metric: ChoroplethMetric, mobileHint = 
       <div className="font-semibold mb-1">{agg.name}</div>
       <div>Total Granted: {formatUSD(agg.totalUSD)}</div>
       <div>Grants: {formatNum(agg.grantCount)}</div>
-      {metric !== 'none' && (
+      {metric !== 'none' && metric !== 'grantCount' && (
         <div>{getMetricLabel(metric)}: {metric === 'totalUSD' ? formatUSD(getMetricValue(agg, metric)) : formatNum(getMetricValue(agg, metric))}</div>
       )}
       {mobileHint && <div className="mt-1 text-white/60">Tap again for details</div>}
+    </div>
+  );
+}
+
+function emptyTooltipContent(name: string): React.ReactNode {
+  return (
+    <div>
+      <div className="font-semibold mb-1">{name}</div>
+      <div className="text-white/70">No grants issued</div>
     </div>
   );
 }
