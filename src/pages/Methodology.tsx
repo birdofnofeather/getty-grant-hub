@@ -97,7 +97,7 @@ const Methodology = () => (
           only the U.S. share of each grant from the totals. A grant that funds work in the U.S. and
           nowhere else is dropped entirely. A cross-border grant — say a $290,250 award serving five
           countries including the U.S. — stays on the map for the other four countries at $58,050
-          each, and contributes $232,050 (four fifths) to the headline totals and to every dollar
+          each, and contributes $232,200 (four fifths) to the headline totals and to every dollar
           chart. Grants that touch only non-U.S. countries are unaffected.
         </p>
       </Section>
