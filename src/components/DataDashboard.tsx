@@ -246,7 +246,7 @@ const DataDashboard = ({ filteredClean, filteredMap, countryAgg, grantCountries,
     );
   };
 
-  const hint = <p className="text-[10px] text-muted-foreground/70 italic mt-1">Double-click a bar to see the underlying grants.</p>;
+  
 
   // Recharts fires bar events with (data, index, event). Wrap for TS.
   type BarEvt = (data: { payload?: Record<string, unknown> } & Record<string, unknown>, index: number, event: ReactMouseEvent) => void;
