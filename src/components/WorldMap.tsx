@@ -101,33 +101,36 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
   const zoomOut = useCallback(() => setPosition((p) => ({ ...p, zoom: Math.max(p.zoom / 1.5, 1) })), []);
   const resetZoom = useCallback(() => setPosition({ coordinates: [0, 0], zoom: 1 }), []);
 
-  const colorScale = useMemo(() => {
-    if (metric === 'none') return null;
-    // Use non-US max so the US appears as bright as the next brightest country (domain cap)
-    const nonUsValues = Array.from(countryAgg.entries())
-      .filter(([iso]) => iso !== 'US')
-      .map(([, a]) => getMetricValue(a, metric))
-      .filter((v) => v > 0);
-    const allValues = Array.from(countryAgg.values()).map((a) => getMetricValue(a, metric)).filter((v) => v > 0);
-    if (allValues.length === 0) return null;
-    const min = Math.min(...allValues);
-    const max = nonUsValues.length > 0 ? Math.max(...nonUsValues) : Math.max(...allValues);
-    if (min === max) return null;
-
-    return makeColorScale(min, max, metric);
+  // Cap the domain at the second-highest country's value so the single top
+  // country (often the US, or the next leader when the US is excluded) renders
+  // at full intensity without collapsing the scale for everyone else.
+  const cappedMax = useMemo(() => {
+    const values = Array.from(countryAgg.values())
+      .map((a) => getMetricValue(a, metric))
+      .filter((v) => v > 0)
+      .sort((a, b) => b - a);
+    if (values.length === 0) return null;
+    return values.length > 1 ? values[1] : values[0];
   }, [countryAgg, metric]);
 
-  const legendRange = useMemo(() => {
-    if (metric === 'none' || !colorScale) return null;
+  const colorScale = useMemo(() => {
+    if (metric === 'none' || cappedMax == null) return null;
     const allValues = Array.from(countryAgg.values()).map((a) => getMetricValue(a, metric)).filter((v) => v > 0);
-    const nonUsValues = Array.from(countryAgg.entries()).filter(([iso]) => iso !== 'US').map(([, a]) => getMetricValue(a, metric)).filter((v) => v > 0);
+    const min = Math.min(...allValues);
+    if (min === cappedMax) return null;
+    return makeColorScale(min, cappedMax, metric);
+  }, [countryAgg, metric, cappedMax]);
+
+  const legendRange = useMemo(() => {
+    if (metric === 'none' || !colorScale || cappedMax == null) return null;
+    const allValues = Array.from(countryAgg.values()).map((a) => getMetricValue(a, metric)).filter((v) => v > 0);
     if (allValues.length === 0) return null;
     const min = Math.max(Math.min(...allValues), 1);
-    const max = nonUsValues.length > 0 ? Math.max(...nonUsValues) : Math.max(...allValues);
     const [colorMin, colorMax] = getColorRange(metric);
     const fmt = metric === 'totalUSD' ? formatUSD : formatNum;
-    return { colorMin, colorMax, gradient: hclGradient(colorMin, colorMax), minLabel: fmt(Math.round(min)), maxLabel: fmt(Math.round(max)) };
-  }, [countryAgg, metric, colorScale]);
+    return { colorMin, colorMax, gradient: hclGradient(colorMin, colorMax), minLabel: fmt(Math.round(min)), maxLabel: fmt(Math.round(cappedMax)) };
+  }, [countryAgg, metric, colorScale, cappedMax]);
+
 
   const toggleFullscreen = useCallback(() => {
     if (!containerRef.current) return;
