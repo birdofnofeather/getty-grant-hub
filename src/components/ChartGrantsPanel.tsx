@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { ChevronUp, ChevronDown, ExternalLink } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { isIndividualGrant } from '@/lib/classification';
+
 
 function formatUSD(n: number): string {
   return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
