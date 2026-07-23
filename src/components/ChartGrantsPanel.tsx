@@ -102,10 +102,22 @@ export default function ChartGrantsPanel({ selection, onClose }: Props) {
             </div>
 
             <div>
-              <div className="text-xs text-muted-foreground flex gap-4 mb-2 border-b pb-1">
+              <div className="text-xs text-muted-foreground flex items-center gap-4 mb-2 border-b pb-1 flex-wrap">
                 <button onClick={() => toggleSort('year')} className="hover:text-foreground font-medium">Year<SortIcon field="year" /></button>
                 <button onClick={() => toggleSort('amount')} className="hover:text-foreground font-medium">Amount<SortIcon field="amount" /></button>
                 <button onClick={() => toggleSort('initiative')} className="hover:text-foreground font-medium">Initiative<SortIcon field="initiative" /></button>
+                <button
+                  onClick={() => setOrgOnly((v) => !v)}
+                  aria-pressed={orgOnly}
+                  className={`ml-auto rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                    orgOnly
+                      ? 'bg-foreground text-background border-foreground'
+                      : 'bg-background text-muted-foreground hover:text-foreground'
+                  }`}
+                  title="Hide grants to individuals in this panel only"
+                >
+                  Organization grants only
+                </button>
               </div>
               <div className="space-y-2 max-h-[70vh] overflow-y-auto">
                 {sorted.map((g) => {
@@ -120,7 +132,7 @@ export default function ChartGrantsPanel({ selection, onClose }: Props) {
                   return (
                     <div
                       key={g.grantId}
-                      className={`text-xs border rounded-md p-2 bg-background ${titleLong ? 'cursor-pointer' : ''}`}
+                      className={`text-xs border rounded-md p-2 bg-background ${titleLong ? 'cursor-pointer' : ''} ${g._individual ? 'border-emerald-600/70' : ''}`}
                       onClick={toggle}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -146,9 +158,15 @@ export default function ChartGrantsPanel({ selection, onClose }: Props) {
                           )}
                         </div>
                       )}
+                      {g._individual && (
+                        <div className="mt-1 flex justify-end">
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600">Individual</span>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
+
                 {sorted.length === 0 && (
                   <div className="text-xs text-muted-foreground italic">No grants match this selection.</div>
                 )}
