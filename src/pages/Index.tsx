@@ -174,6 +174,16 @@ const Index = () => {
                 >
                   Advanced
                 </button>
+                {hasChanges && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => updateFilters(DEFAULT_FILTERS)}
+                    className="text-xs text-muted-foreground gap-1 rounded-full px-2 py-1 h-auto"
+                  >
+                    <RotateCcw className="h-3 w-3" /> Reset all filters
+                  </Button>
+                )}
                 {!fullDataReady && (
                   <span className="text-[11px] text-muted-foreground self-center inline-flex items-center gap-1">
                     <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" aria-hidden="true" />
@@ -185,7 +195,7 @@ const Index = () => {
                   className="text-xs px-3 py-1.5 rounded-full border border-input bg-card text-foreground hover:border-primary/50 transition-colors inline-flex items-center gap-1 ml-auto"
                   title="Copy a link to this exact view"
                 >
-                  <Link2 className="h-3 w-3" /> Copy link
+                  <Link2 className="h-3 w-3" /> Copy link to this view
                 </button>
               </div>
 
