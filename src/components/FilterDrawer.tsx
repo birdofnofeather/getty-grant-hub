@@ -25,7 +25,6 @@ export default function FilterDrawer({ mode, filters, onChange, allInitiatives, 
   const [initiativeSearch, setInitiativeSearch] = useState('');
 
   const isAdvanced = mode === 'advanced';
-  const hasChanges = JSON.stringify(filters) !== JSON.stringify(DEFAULT_FILTERS);
 
   const basicMetrics: { value: ChoroplethMetric; label: string }[] = [
     { value: 'none', label: 'None' },
