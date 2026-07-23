@@ -153,8 +153,18 @@ export default function CountryDetailPanel({ iso2, countryAgg, filteredMap, filt
                   {grants.map((g) => {
                     const isExpanded = expandedGrants.has(g.grantId);
                     const titleLong = g.title.length > 80;
+                    const toggle = () => {
+                      if (!titleLong) return;
+                      const next = new Set(expandedGrants);
+                      if (isExpanded) next.delete(g.grantId); else next.add(g.grantId);
+                      setExpandedGrants(next);
+                    };
                     return (
-                      <div key={g.grantId} className="text-xs border rounded-md p-2 bg-background">
+                      <div
+                        key={g.grantId}
+                        className={`text-xs border rounded-md p-2 bg-background ${titleLong ? 'cursor-pointer' : ''}`}
+                        onClick={toggle}
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <span className="font-mono text-muted-foreground">{g.year}</span>
                           <span className="flex-1 font-medium truncate">{g.grantee}</span>
@@ -168,21 +178,20 @@ export default function CountryDetailPanel({ iso2, countryAgg, filteredMap, filt
                           </div>
                         )}
                         {g.title && (
-                          <div
-                            className={`mt-1 text-foreground/70 ${!isExpanded && titleLong ? 'truncate cursor-pointer' : titleLong ? 'cursor-pointer' : ''}`}
-                            onClick={() => {
-                              if (titleLong) {
-                                const next = new Set(expandedGrants);
-                                if (isExpanded) next.delete(g.grantId); else next.add(g.grantId);
-                                setExpandedGrants(next);
-                              }
-                            }}
-                          >
-                            {g.url ? (
-                              <a href={g.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-start gap-1 hover:text-foreground hover:underline" onClick={(e) => e.stopPropagation()}>
-                                {g.title}<ExternalLink className="h-3 w-3 mt-0.5 shrink-0" />
+                          <div className={`mt-1 text-foreground/70 ${!isExpanded && titleLong ? 'truncate' : ''}`}>
+                            <span>{g.title}</span>
+                            {g.url && (
+                              <a
+                                href={g.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center hover:text-foreground ml-1 align-middle"
+                                onClick={(e) => e.stopPropagation()}
+                                aria-label="Open project page"
+                              >
+                                <ExternalLink className="h-3 w-3 shrink-0" />
                               </a>
-                            ) : g.title}
+                            )}
                           </div>
                         )}
                       </div>

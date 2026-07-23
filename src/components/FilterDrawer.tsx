@@ -30,9 +30,9 @@ export default function FilterDrawer({ mode, filters, onChange, allInitiatives, 
   const hasChanges = JSON.stringify(filters) !== JSON.stringify(DEFAULT_FILTERS);
 
   const basicMetrics: { value: ChoroplethMetric; label: string }[] = [
-    { value: 'none', label: 'None (uniform)' },
-    { value: 'grantCount', label: 'Grant Count' },
+    { value: 'none', label: 'None' },
     { value: 'totalUSD', label: 'Total USD Awarded' },
+    { value: 'grantCount', label: 'Grant Count' },
   ];
 
   const advancedMetrics: { value: ChoroplethMetric; label: string }[] = [
@@ -119,24 +119,24 @@ export default function FilterDrawer({ mode, filters, onChange, allInitiatives, 
         </div>
       )}
 
-      {/* Org toggle */}
-      <div className="flex items-center gap-2">
-        <Switch checked={filters.orgOnly} onCheckedChange={(v) => onChange({ orgOnly: v })} />
-        <Label className="text-sm">Organizational grants only</Label>
-        {HAS_METHODOLOGY && (
-          <Link to="/methodology#individuals" title="How are individual grants identified?"
-            className="text-muted-foreground hover:text-foreground">
-            <Info className="h-3.5 w-3.5" />
-          </Link>
-        )}
-      </div>
-
       {/* Exclude U.S. */}
       <div className="flex items-center gap-2">
         <Switch checked={filters.excludeUS} onCheckedChange={(v) => onChange({ excludeUS: v })} />
         <Label className="text-sm">Exclude U.S. grants</Label>
         {HAS_METHODOLOGY && (
           <Link to="/methodology#exclude-us" title="How U.S. exclusion is applied"
+            className="text-muted-foreground hover:text-foreground">
+            <Info className="h-3.5 w-3.5" />
+          </Link>
+        )}
+      </div>
+
+      {/* Org toggle */}
+      <div className="flex items-center gap-2">
+        <Switch checked={filters.orgOnly} onCheckedChange={(v) => onChange({ orgOnly: v })} />
+        <Label className="text-sm">Organizational grants only</Label>
+        {HAS_METHODOLOGY && (
+          <Link to="/methodology#individuals" title="How are individual grants identified?"
             className="text-muted-foreground hover:text-foreground">
             <Info className="h-3.5 w-3.5" />
           </Link>

@@ -42,6 +42,7 @@ ORG_KEYWORDS = re.compile(
 PST_INITIATIVES = {
     'Pacific Standard Time: LA/LA',
     'Grants Outside of LA in support of Pacific Standard Time: LA/LA',
+    'PST ART: Art & Science Collide',
 }
 PST_KEEP_ORIGINAL = {'201527020', '201526957', '20150007'}
 

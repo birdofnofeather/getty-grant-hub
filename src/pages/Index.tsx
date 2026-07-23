@@ -72,6 +72,9 @@ const Index = () => {
           <p className="text-xs text-muted-foreground mt-0.5">
             Every grant awarded by the Getty Foundation since 1984 · Updated monthly
           </p>
+          <p className="text-xs text-red-600 dark:text-red-500 mt-0.5">
+            Project not affiliated with J. Paul Getty Trust. Data hosted publicly on Getty's website.
+          </p>
         </div>
         <div role="tablist" aria-label="View mode" className="inline-flex rounded-full border border-input bg-background p-0.5">
           <button
