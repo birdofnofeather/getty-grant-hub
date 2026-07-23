@@ -93,11 +93,12 @@ const Methodology = () => (
 
       <Section id="exclude-us" title="Excluding U.S. grants">
         <p>
-          Toggling <em>Exclude U.S. grants</em> hides any grant that touches the United States on the map.
-          It is all-or-nothing per grant: a cross-border grant that funds work in both the U.S. and, say,
-          Mexico is removed from every view — including its Mexico row — because keeping only the
-          non-U.S. portion would misrepresent a project whose center of gravity is in Los Angeles or New
-          York. Grant counts and dollar totals both drop accordingly.
+          Toggling <em>Exclude U.S. grants</em> removes the United States from the map and subtracts
+          only the U.S. share of each grant from the totals. A grant that funds work in the U.S. and
+          nowhere else is dropped entirely. A cross-border grant — say a $290,250 award serving five
+          countries including the U.S. — stays on the map for the other four countries at $58,050
+          each, and contributes $232,200 (four fifths) to the headline totals and to every dollar
+          chart. Grants that touch only non-U.S. countries are unaffected.
         </p>
       </Section>
 

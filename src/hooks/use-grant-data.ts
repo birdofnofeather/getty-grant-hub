@@ -167,26 +167,57 @@ export function useGrantData(filters: FilterState) {
       });
   }, []);
 
-  // Grants that touch the US on the map (any row where map_iso2 === 'US').
-  // Used to implement "Exclude U.S." — an all-or-nothing filter that removes
-  // the grant from every view, including its non-US country rows.
-  const usGrantIds = useMemo(() => {
-    const s = new Set<string>();
-    for (const r of mapData) if (r.map_iso2 === 'US') s.add(r.grantId);
-    return s;
-  }, [mapData]);
-
   const adjust = useMemo(() => makeAdjuster(filters.inflationAdjust), [filters.inflationAdjust]);
 
+  // Map rows that survive base filters + PST override, BEFORE the excludeUS cut.
+  // This is the source of truth for a grant's intrinsic country span, so the
+  // multi-country split denominator does not shrink when U.S. is excluded.
+  const filteredMapBase = useMemo(
+    () => applyPstOverride(applyBaseFilters(mapData, filters)),
+    [mapData, filters]
+  );
+
+  // Displayed map rows: drop U.S. rows when excludeUS is on. Non-U.S. rows for
+  // multi-country grants remain visible.
+  const filteredMap = useMemo(
+    () => (filters.excludeUS ? filteredMapBase.filter((r) => r.map_iso2 !== 'US') : filteredMapBase),
+    [filteredMapBase, filters.excludeUS]
+  );
+
+  // Multi-country dollar split (added July 2026): a grant that serves N countries
+  // contributes amount/N to each country's total, so per-country totals no longer
+  // double-count grants that span borders. grantCountries lists the distinct
+  // countries each grant touches (after the PST override) — derived from
+  // filteredMapBase, so U.S. remains in the denominator even when excluded.
+  const grantCountries = useMemo(() => {
+    const gc = new Map<string, { iso2: string; name: string }[]>();
+    for (const row of filteredMapBase) {
+      if (!row.map_iso2) continue;
+      let list = gc.get(row.grantId);
+      if (!list) { list = []; gc.set(row.grantId, list); }
+      if (!list.some((x) => x.iso2 === row.map_iso2)) list.push({ iso2: row.map_iso2, name: row.map_country });
+    }
+    return gc;
+  }, [filteredMapBase]);
+
+  // filteredClean drives headline totals and every Data-view chart. When
+  // excludeUS is on we scale each grant's amount to its non-U.S. share
+  // (e.g. a 5-country grant loses 1/5) and drop grants that only touch the U.S.
   const filteredClean = useMemo(() => {
     const base = applyBaseFilters(cleanData, filters);
-    return filters.excludeUS ? base.filter((r) => !usGrantIds.has(r.grantId)) : base;
-  }, [cleanData, filters, usGrantIds]);
-  const filteredMap = useMemo(() => {
-    let base = applyBaseFilters(mapData, filters);
-    if (filters.excludeUS) base = base.filter((r) => !usGrantIds.has(r.grantId));
-    return applyPstOverride(base);
-  }, [mapData, filters, usGrantIds]);
+    if (!filters.excludeUS) return base;
+    const out: CleanGrant[] = [];
+    for (const g of base) {
+      const countries = grantCountries.get(g.grantId);
+      if (!countries || countries.length === 0) { out.push(g); continue; }
+      const hasUs = countries.some((c) => c.iso2 === 'US');
+      if (!hasUs) { out.push(g); continue; }
+      if (countries.length === 1) continue; // U.S.-only grant: drop entirely
+      const scale = (countries.length - 1) / countries.length;
+      out.push({ ...g, amountAwarded_USD: g.amountAwarded_USD * scale });
+    }
+    return out;
+  }, [cleanData, filters, grantCountries]);
 
   const headlineStats = useMemo(() => {
     // Before the full CSVs arrive, serve the default (and org-only) totals from the
@@ -201,28 +232,13 @@ export function useGrantData(filters: FilterState) {
     return { totalUSD, grantCount, hasPartialYear };
   }, [csvReady, aggData, filters.orgOnly, filters.excludeUS, filters.inflationAdjust, filteredClean, filters.yearRange, adjust]);
 
-  // Multi-country dollar split (added July 2026): a grant that serves N countries
-  // contributes amount/N to each country's total, so per-country totals no longer
-  // double-count grants that span borders. grantCountries lists the distinct
-  // countries each grant touches (after the PST override); its length is the
-  // split denominator. Grant-level filters keep or drop a grant as a whole, so
-  // this length equals the grant's intrinsic country span for any passing grant.
-  const grantCountries = useMemo(() => {
-    const gc = new Map<string, { iso2: string; name: string }[]>();
-    for (const row of filteredMap) {
-      if (!row.map_iso2) continue;
-      let list = gc.get(row.grantId);
-      if (!list) { list = []; gc.set(row.grantId, list); }
-      if (!list.some((x) => x.iso2 === row.map_iso2)) list.push({ iso2: row.map_iso2, name: row.map_country });
-    }
-    return gc;
-  }, [filteredMap]);
-
-  const cleanById = useMemo(() => {
+  // Raw unscaled lookup for the per-country split math. Uses the full cleanData
+  // so filteredClean's excludeUS scaling doesn't double-apply here.
+  const cleanByIdAll = useMemo(() => {
     const m = new Map<string, CleanGrant>();
-    for (const c of filteredClean) m.set(c.grantId, c);
+    for (const c of cleanData) m.set(c.grantId, c);
     return m;
-  }, [filteredClean]);
+  }, [cleanData]);
 
   const countryAgg = useMemo(() => {
     // Before CSVs arrive, render the default map from precomputed aggregates.
@@ -275,7 +291,7 @@ export function useGrantData(filters: FilterState) {
       // financial totals from clean CSV, split evenly across the grant's countries
       let total = 0;
       for (const gid of agg.grantIds) {
-        const clean = cleanById.get(gid);
+        const clean = cleanByIdAll.get(gid);
         const full = clean && clean.amountAwarded_USD > 0 ? clean.amountAwarded_USD : 0;
         if (full <= 0) continue;
         const denom = grantCountries.get(gid)?.length || 1;
@@ -295,7 +311,7 @@ export function useGrantData(filters: FilterState) {
     }
 
     return map;
-  }, [csvReady, aggData, filters, filteredMap, cleanById, grantCountries, filters.minGrantCountPerCountry]);
+  }, [csvReady, aggData, filters, filteredMap, cleanByIdAll, grantCountries, filters.minGrantCountPerCountry, adjust]);
 
   const allInitiatives = useMemo(() => {
     const set = new Set<string>();

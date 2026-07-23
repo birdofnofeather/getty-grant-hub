@@ -51,7 +51,10 @@ export default function CountryDetailPanel({ iso2, countryAgg, filteredMap, filt
       if (seen.has(row.grantId)) continue;
       seen.add(row.grantId);
       const clean = cleanMap.get(row.grantId);
-      const full = clean ? clean.amountAwarded_USD : row.amountAwarded_USD;
+      // Use the map row's amount as the source of truth for the grant's full
+      // (unscaled) award — filteredClean may carry a scaled amount when the
+      // "Exclude U.S." filter is on for cross-border grants.
+      const full = row.amountAwarded_USD > 0 ? row.amountAwarded_USD : (clean ? clean.amountAwarded_USD : 0);
       const year = clean ? clean.grantAwardYear : row.grantAwardYear;
       const adjustedFull = adjust ? adjust(full, year) : (full > 0 ? full : 0);
       const countries = grantCountries.get(row.grantId) || [];
