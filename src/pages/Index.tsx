@@ -11,7 +11,8 @@ import { HAS_METHODOLOGY } from '@/lib/site-config';
 import { Link } from 'react-router-dom';
 import { serializeState, parseState } from '@/lib/url-state';
 import { toast } from 'sonner';
-import { Link2 } from 'lucide-react';
+import { Link2, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 type ViewMode = 'map' | 'data';
 
@@ -56,6 +57,8 @@ const Index = () => {
   const updateFilters = useCallback((partial: Partial<FilterState>) => {
     setFilters((prev) => ({ ...prev, ...partial }));
   }, []);
+
+  const hasChanges = JSON.stringify(filters) !== JSON.stringify(DEFAULT_FILTERS);
 
   const toggleDrawer = (mode: DrawerMode) => {
     setDrawerMode((prev) => (prev === mode ? 'none' : mode));
@@ -173,6 +176,16 @@ const Index = () => {
                 >
                   Advanced
                 </button>
+                {hasChanges && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => updateFilters(DEFAULT_FILTERS)}
+                    className="text-xs text-muted-foreground gap-1 rounded-full px-2 py-1 h-auto"
+                  >
+                    <RotateCcw className="h-3 w-3" /> Reset all filters
+                  </Button>
+                )}
                 {!fullDataReady && (
                   <span className="text-[11px] text-muted-foreground self-center inline-flex items-center gap-1">
                     <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" aria-hidden="true" />
@@ -184,7 +197,7 @@ const Index = () => {
                   className="text-xs px-3 py-1.5 rounded-full border border-input bg-card text-foreground hover:border-primary/50 transition-colors inline-flex items-center gap-1 ml-auto"
                   title="Copy a link to this exact view"
                 >
-                  <Link2 className="h-3 w-3" /> Copy link
+                  <Link2 className="h-3 w-3" /> Copy link to this view
                 </button>
               </div>
 
