@@ -277,8 +277,12 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
                     role={hasGrants ? 'button' : undefined}
                     aria-label={hasGrants && agg ? `${agg.name}: ${formatNum(agg.grantCount)} grants, ${formatUSD(agg.totalUSD)}` : undefined}
                     onMouseEnter={(e) => {
-                      if (!hasGrants || !agg) return;
-                      setTooltip({ x: e.clientX, y: e.clientY, content: tooltipContent(agg, metric) });
+                      if (hasGrants && agg) {
+                        setTooltip({ x: e.clientX, y: e.clientY, content: tooltipContent(agg, metric) });
+                      } else {
+                        const name = geo.properties?.name || 'Unknown';
+                        setTooltip({ x: e.clientX, y: e.clientY, content: emptyTooltipContent(name) });
+                      }
                     }}
                     onMouseLeave={() => setTooltip(null)}
                     onFocus={(e) => {

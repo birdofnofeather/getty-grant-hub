@@ -72,11 +72,11 @@ const Methodology = () => (
           figure is unaffected, since it always counted each grant once.
         </p>
         <p>
-          Grants under the "Pacific Standard Time: LA/LA" initiative funded exhibitions <em>about</em> Latin
-          American art that took place <em>in</em> Los Angeles, so they are mapped to Los Angeles rather
-          than scattered across the countries they depict (with three documented exceptions that genuinely
-          funded work abroad). The four parts of the United Kingdom are combined into one country for
-          shading.
+          Grants under the "Pacific Standard Time: LA/LA" and "PST ART: Art & Science Collide" initiatives
+          funded exhibitions and programs <em>about</em> other regions that took place <em>in</em> Los
+          Angeles, so they are mapped to Los Angeles rather than scattered across the countries they
+          depict (with three documented Pacific Standard Time: LA/LA exceptions that genuinely funded
+          work abroad). The four parts of the United Kingdom are combined into one country for shading.
         </p>
       </Section>
 
