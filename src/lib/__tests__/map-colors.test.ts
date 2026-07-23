@@ -9,27 +9,27 @@ function relLum(rgb: string): number {
 
 describe('choropleth colour scale', () => {
   it('dollars use amber, counts use blue', () => {
-    expect(getColorRange('totalUSD')).toEqual(['#9a3412', '#fcd34d']);
-    expect(getColorRange('grantCount')).toEqual(['#1d4ed8', '#93c5fd']);
+    expect(getColorRange('totalUSD')).toEqual(['#fcd34d', '#9a3412']);
+    expect(getColorRange('grantCount')).toEqual(['#93c5fd', '#1d4ed8']);
     // advanced metrics fold into the blue family (no green)
-    expect(getColorRange('uniqueGrantees')).toEqual(['#1d4ed8', '#93c5fd']);
-    expect(getColorRange('longevity')).toEqual(['#1d4ed8', '#93c5fd']);
+    expect(getColorRange('uniqueGrantees')).toEqual(['#93c5fd', '#1d4ed8']);
+    expect(getColorRange('longevity')).toEqual(['#93c5fd', '#1d4ed8']);
   });
 
-  it('low value = dim end, high value = bright end (dim→bright for dark bg)', () => {
+  it('low value = bright end, high value = dark end (bright→dark for dark bg)', () => {
     const scale = makeColorScale(1, 1000, 'grantCount');
     const lo = scale(1);
     const hi = scale(1000);
-    expect(relLum(hi)).toBeGreaterThan(relLum(lo)); // brighter = more
+    expect(relLum(lo)).toBeGreaterThan(relLum(hi)); // darker = more
   });
 
-  it('is monotonically increasing in luminance across the range', () => {
+  it('is monotonically decreasing in luminance across the range', () => {
     const scale = makeColorScale(1, 1000, 'grantCount');
     const lums = [1, 5, 20, 80, 300, 1000].map((v) => relLum(scale(v)));
-    for (let i = 1; i < lums.length; i++) expect(lums[i]).toBeGreaterThan(lums[i - 1]);
+    for (let i = 1; i < lums.length; i++) expect(lums[i]).toBeLessThan(lums[i - 1]);
   });
 
-  it('values at/above the capped max clamp to the bright end', () => {
+  it('values at/above the capped max clamp to the dark end', () => {
     const scale = makeColorScale(1, 1000, 'totalUSD');
     expect(scale(1000)).toBe(scale(5000)); // clamp — US (capped) renders at max
   });
