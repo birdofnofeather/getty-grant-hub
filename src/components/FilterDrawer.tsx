@@ -2,13 +2,11 @@ import { useMemo, useState, useRef, useEffect } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { X, Search, RotateCcw, Info } from 'lucide-react';
+import { X, Search, Info } from 'lucide-react';
 import type { FilterState, ChoroplethMetric, DrawerMode, InitiativeGroups } from '@/lib/grant-types';
-import { DEFAULT_FILTERS } from '@/lib/grant-types';
 import { HAS_METHODOLOGY } from '@/lib/site-config';
 import { Link } from 'react-router-dom';
 
