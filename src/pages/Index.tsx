@@ -11,7 +11,8 @@ import { HAS_METHODOLOGY } from '@/lib/site-config';
 import { Link } from 'react-router-dom';
 import { serializeState, parseState } from '@/lib/url-state';
 import { toast } from 'sonner';
-import { Link2 } from 'lucide-react';
+import { Link2, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 type ViewMode = 'map' | 'data';
 

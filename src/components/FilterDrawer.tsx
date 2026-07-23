@@ -249,19 +249,6 @@ export default function FilterDrawer({ mode, filters, onChange, allInitiatives, 
         </>
       )}
 
-      {/* Reset */}
-      {hasChanges && (
-        <div className="pt-2 border-t">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onChange(DEFAULT_FILTERS)}
-            className="text-xs text-muted-foreground gap-1"
-          >
-            <RotateCcw className="h-3 w-3" /> Reset all filters
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
