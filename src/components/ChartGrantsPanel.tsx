@@ -40,9 +40,27 @@ export default function ChartGrantsPanel({ selection, onClose }: Props) {
   const [sortField, setSortField] = useState<SortField>('year');
   const [sortAsc, setSortAsc] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [orgOnly, setOrgOnly] = useState(false);
   const isMobile = useIsMobile();
 
-  const items = selection?.items ?? [];
+  // Reset local panel state whenever a new selection opens
+  useEffect(() => {
+    setOrgOnly(false);
+    setExpanded(new Set());
+  }, [selection]);
+
+  const allItems = selection?.items ?? [];
+  const itemsWithFlag = useMemo(
+    () => allItems.map((g) => ({
+      ...g,
+      _individual: isIndividualGrant({ initiative: g.initiative, amountAwarded_USD: g.amount, grantee_name: g.grantee }),
+    })),
+    [allItems]
+  );
+  const items = useMemo(
+    () => (orgOnly ? itemsWithFlag.filter((g) => !g._individual) : itemsWithFlag),
+    [itemsWithFlag, orgOnly]
+  );
   const sorted = useMemo(() => {
     const dir = sortAsc ? 1 : -1;
     return [...items].sort((a, b) => {
@@ -55,6 +73,7 @@ export default function ChartGrantsPanel({ selection, onClose }: Props) {
   }, [items, sortField, sortAsc]);
 
   const totalUSD = useMemo(() => items.reduce((s, g) => s + (g.amount > 0 ? g.amount : 0), 0), [items]);
+
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) setSortAsc(!sortAsc);
