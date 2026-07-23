@@ -58,6 +58,8 @@ const Index = () => {
     setFilters((prev) => ({ ...prev, ...partial }));
   }, []);
 
+  const hasChanges = JSON.stringify(filters) !== JSON.stringify(DEFAULT_FILTERS);
+
   const toggleDrawer = (mode: DrawerMode) => {
     setDrawerMode((prev) => (prev === mode ? 'none' : mode));
   };
