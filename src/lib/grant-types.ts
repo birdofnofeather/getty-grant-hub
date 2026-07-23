@@ -55,7 +55,7 @@ export const DEFAULT_FILTERS: FilterState = {
   orgOnly: false,
   excludeUS: false,
   inflationAdjust: false,
-  metric: 'grantCount',
+  metric: 'none',
   selectedInitiatives: null,
   minGrantAmount: 0,
   minGrantCountPerCountry: 1,

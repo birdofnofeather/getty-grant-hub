@@ -49,6 +49,7 @@ export function isIndividualGrant(row: { initiative: string; amountAwarded_USD: 
 export const PST_INITIATIVES = new Set([
   'Pacific Standard Time: LA/LA',
   'Grants Outside of LA in support of Pacific Standard Time: LA/LA',
+  'PST ART: Art & Science Collide',
 ]);
 
 // Three PST LA/LA grants genuinely funded work abroad and keep their original locations.
