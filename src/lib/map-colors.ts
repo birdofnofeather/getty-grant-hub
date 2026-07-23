@@ -1,6 +1,7 @@
 // Choropleth colour logic, extracted so it can be unit-tested. Ramps run
-// DIM -> BRIGHT (brighter = more) for the dark map canvas, interpolated in HCL
-// space for perceptually even midtones. Two colour families only (blue = counts,
+// LIGHT -> DARK (darker = more) per the dashboard direction: the greater the
+// value, the darker/saturated the hue. Interpolated in HCL space for
+// perceptually even midtones. Two colour families only (blue = counts,
 // amber = dollars); green was dropped as the least colour-vision-deficiency-safe.
 import { scaleLog } from 'd3-scale';
 import { interpolateHcl } from 'd3-interpolate';
@@ -9,13 +10,13 @@ import type { ChoroplethMetric } from '@/lib/grant-types';
 export function getColorRange(metric: ChoroplethMetric): [string, string] {
   switch (metric) {
     case 'totalUSD':
-      return ['#9a3412', '#fcd34d']; // dim amber → bright gold
+      return ['#fcd34d', '#9a3412']; // bright gold → dark amber
     case 'uniqueGrantees':
     case 'uniqueInitiatives':
     case 'longevity':
     case 'grantCount':
     default:
-      return ['#1d4ed8', '#93c5fd']; // dim blue → bright sky
+      return ['#93c5fd', '#1d4ed8']; // bright sky → deep blue
   }
 }
 
