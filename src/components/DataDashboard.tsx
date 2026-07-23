@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactElement } from 'react';
+import { useMemo, useState, type ReactElement, type MouseEvent as ReactMouseEvent } from 'react';
 import {
   ResponsiveContainer,
   BarChart, Bar, Cell,
@@ -10,13 +10,16 @@ import {
   perYear, peopleVsOrgByYear, topInitiatives, avgGrantSize,
   topCountriesExUS, topCountriesExUSByUsd, sizeBuckets, cumulativeUSD,
 } from '@/lib/dashboard-data';
+import { isIndividualGrant } from '@/lib/classification';
 import type { Adjuster } from '@/lib/inflation';
 import { CPI_REFERENCE_YEAR } from '@/lib/inflation';
+import ChartGrantsPanel, { type ChartDetailItem, type ChartDetailSelection } from './ChartGrantsPanel';
 
 interface Props {
   filteredClean: CleanGrant[];
   filteredMap: MapGrant[];
   countryAgg: Map<string, CountryAgg>;
+  grantCountries: Map<string, { iso2: string; name: string }[]>;
   maxYear: number;
   adjust: Adjuster;
   inflationAdjust: boolean;
@@ -26,9 +29,9 @@ interface Props {
 const COLORS = {
   primary: 'hsl(var(--primary))',
   muted: 'hsl(var(--muted-foreground))',
-  accent: 'hsl(217 91% 60%)',   // blue — organizations / counts
-  amber: 'hsl(32 95% 44%)',     // amber — dollars
-  people: 'hsl(160 84% 39%)',   // teal — individuals
+  accent: 'hsl(217 91% 60%)',
+  amber: 'hsl(32 95% 44%)',
+  people: 'hsl(160 84% 39%)',
   positive: 'hsl(160 84% 39%)',
   negative: 'hsl(0 72% 55%)',
 };
@@ -78,10 +81,25 @@ const Pills = ({ options, value, onChange }: { options: { v: string; label: stri
 
 const commonXAxis = { interval: 'preserveStartEnd' as const, minTickGap: 20, tick: { fill: 'hsl(var(--muted-foreground))', fontSize: 11 } };
 
-const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAdjust, excludeUS }: Props) => {
+function sideFromEvent(e: unknown): 'left' | 'right' {
+  const evt = e as { clientX?: number } | undefined;
+  const x = evt?.clientX ?? 0;
+  const w = typeof window !== 'undefined' ? window.innerWidth : 1280;
+  // Chart on right half → open panel on left, and vice versa.
+  return x > w / 2 ? 'left' : 'right';
+}
+
+const DataDashboard = ({ filteredClean, filteredMap, countryAgg, grantCountries, maxYear, adjust, inflationAdjust, excludeUS }: Props) => {
   const [initBy, setInitBy] = useState<'usd' | 'count'>('usd');
   const [povBy, setPovBy] = useState<'count' | 'usd'>('count');
   const [countryBy, setCountryBy] = useState<'usd' | 'count'>('usd');
+  const [selection, setSelection] = useState<ChartDetailSelection | null>(null);
+
+  const cleanById = useMemo(() => {
+    const m = new Map<string, CleanGrant>();
+    for (const g of filteredClean) m.set(g.grantId, g);
+    return m;
+  }, [filteredClean]);
 
   const years = useMemo(() => perYear(filteredClean, adjust), [filteredClean, adjust]);
   const pov = useMemo(() => peopleVsOrgByYear(filteredClean, adjust), [filteredClean, adjust]);
@@ -92,6 +110,14 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
     [countryAgg, countryBy]
   );
   const buckets = useMemo(() => sizeBuckets(filteredClean), [filteredClean]);
+  const bucketRanges = useMemo(() => [
+    { label: '< $5K', min: 0, max: 5_000 },
+    { label: '$5K–25K', min: 5_000, max: 25_000 },
+    { label: '$25K–100K', min: 25_000, max: 100_000 },
+    { label: '$100K–500K', min: 100_000, max: 500_000 },
+    { label: '$500K–1M', min: 500_000, max: 1_000_000 },
+    { label: '> $1M', min: 1_000_000, max: Infinity },
+  ], []);
   const cumulative = useMemo(() => {
     const cum = cumulativeUSD(years);
     return years.map((y, i) => {
@@ -110,6 +136,88 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
   const partialNote = `${maxYear} is a partial year`;
   const dollarNote = inflationAdjust ? `in ${CPI_REFERENCE_YEAR} dollars (CPI-U)` : '';
   const withDollarNote = (s: string) => dollarNote ? `${s} · ${dollarNote}` : s;
+
+  // --- selection builders ---
+  const toItem = (g: CleanGrant): ChartDetailItem => ({
+    grantId: g.grantId,
+    year: g.grantAwardYear,
+    grantee: g.grantee_name,
+    amount: adjust(g.amountAwarded_USD, g.grantAwardYear),
+    initiative: g.initiative || '(Unspecified)',
+    title: g.projectTitle_clean,
+    url: g.projectTitleURL,
+  });
+
+  const openYearSelection = (year: number, e: unknown, kind: 'all' | 'ind' | 'org' = 'all') => {
+    let grants = filteredClean.filter((g) => g.grantAwardYear === year);
+    if (kind === 'ind') grants = grants.filter(isIndividualGrant);
+    else if (kind === 'org') grants = grants.filter((g) => !isIndividualGrant(g));
+    const label = kind === 'ind' ? 'Individuals · ' : kind === 'org' ? 'Organizations · ' : '';
+    setSelection({
+      title: `${label}${year}`,
+      subtitle: `${grants.length.toLocaleString()} grants`,
+      side: sideFromEvent(e),
+      items: grants.map(toItem),
+    });
+  };
+
+  const openInitiativeSelection = (name: string, e: unknown) => {
+    const grants = filteredClean.filter((g) => (g.initiative || '(Unspecified)') === name);
+    setSelection({
+      title: name,
+      subtitle: `${grants.length.toLocaleString()} grants`,
+      side: sideFromEvent(e),
+      items: grants.map(toItem),
+    });
+  };
+
+  const openBucketSelection = (label: string, e: unknown) => {
+    const range = bucketRanges.find((b) => b.label === label);
+    if (!range) return;
+    const grants = filteredClean.filter((g) => g.amountAwarded_USD >= range.min && g.amountAwarded_USD < range.max);
+    setSelection({
+      title: `Grants ${label}`,
+      subtitle: `${grants.length.toLocaleString()} grants (nominal amounts)`,
+      side: sideFromEvent(e),
+      items: grants.map(toItem),
+    });
+  };
+
+  const openCountrySelection = (name: string, e: unknown) => {
+    // Resolve iso2 by name from countryAgg.
+    let iso2: string | null = null;
+    for (const c of countryAgg.values()) {
+      if (c.name === name) { iso2 = c.iso2; break; }
+    }
+    if (!iso2) return;
+    const rows = filteredMap.filter((r) => r.map_iso2 === iso2);
+    const seen = new Set<string>();
+    const items: ChartDetailItem[] = [];
+    for (const r of rows) {
+      if (seen.has(r.grantId)) continue;
+      seen.add(r.grantId);
+      const clean = cleanById.get(r.grantId);
+      const full = r.amountAwarded_USD > 0 ? r.amountAwarded_USD : (clean ? clean.amountAwarded_USD : 0);
+      const year = clean ? clean.grantAwardYear : r.grantAwardYear;
+      const adjusted = adjust(full, year);
+      const denom = (grantCountries.get(r.grantId) || []).length || 1;
+      items.push({
+        grantId: r.grantId,
+        year,
+        grantee: r.grantee_name,
+        amount: adjusted > 0 ? adjusted / denom : 0,
+        initiative: r.initiative || '(Unspecified)',
+        title: r.projectTitle_clean,
+        url: clean ? clean.projectTitleURL : '',
+      });
+    }
+    setSelection({
+      title: name,
+      subtitle: `${items.length.toLocaleString()} grants (split-adjusted)`,
+      side: sideFromEvent(e),
+      items,
+    });
+  };
 
   if (filteredClean.length === 0) {
     return (
@@ -138,7 +246,13 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
     );
   };
 
+  
+
+  // Recharts fires bar events with (data, index, event). Wrap for TS.
+  type BarEvt = (data: { payload?: Record<string, unknown> } & Record<string, unknown>, index: number, event: ReactMouseEvent) => void;
+
   return (
+    <>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* 1. Total USD Awarded per Year */}
       <ChartCard title="Total USD Awarded per Year" subtitle={withDollarNote(`Sum of amount awarded each year · ${partialNote}`)}>
@@ -147,7 +261,9 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
           <XAxis dataKey="year" {...commonXAxis} />
           <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={formatShortUSD} />
           <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => formatShortUSD(v)} />
-          <Bar dataKey="usd" fill={COLORS.amber} name="USD" radius={[3, 3, 0, 0]}>
+          <Bar dataKey="usd" fill={COLORS.amber} name="USD" radius={[3, 3, 0, 0]}
+            onDoubleClick={((d, _i, e) => openYearSelection(Number(d.year), e)) as BarEvt}
+            style={{ cursor: 'pointer' }}>
             {years.map((d) => <Cell key={d.year} fillOpacity={barOpacity(d.year)} />)}
           </Bar>
         </BarChart>
@@ -160,7 +276,9 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
           <XAxis dataKey="year" {...commonXAxis} />
           <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
           <Tooltip contentStyle={tooltipStyle} />
-          <Bar dataKey="count" fill={COLORS.accent} name="Grants" radius={[3, 3, 0, 0]}>
+          <Bar dataKey="count" fill={COLORS.accent} name="Grants" radius={[3, 3, 0, 0]}
+            onDoubleClick={((d, _i, e) => openYearSelection(Number(d.year), e)) as BarEvt}
+            style={{ cursor: 'pointer' }}>
             {years.map((d) => <Cell key={d.year} fillOpacity={barOpacity(d.year)} />)}
           </Bar>
         </BarChart>
@@ -178,7 +296,9 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
           <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={initBy === 'usd' ? formatShortUSD : undefined} />
           <YAxis type="category" dataKey="name" width={180} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
           <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => (initBy === 'usd' ? formatShortUSD(v) : v.toLocaleString())} />
-          <Bar dataKey={initBy} fill={initBy === 'usd' ? COLORS.amber : COLORS.accent} radius={[0, 3, 3, 0]} name={initBy === 'usd' ? 'USD' : 'Grants'} />
+          <Bar dataKey={initBy} fill={initBy === 'usd' ? COLORS.amber : COLORS.accent} radius={[0, 3, 3, 0]} name={initBy === 'usd' ? 'USD' : 'Grants'}
+            onDoubleClick={((d, _i, e) => openInitiativeSelection(String(d.name), e)) as BarEvt}
+            style={{ cursor: 'pointer' }} />
         </BarChart>
       </ChartCard>
 
@@ -189,7 +309,9 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
           <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={formatShortUSD} />
           <YAxis type="category" dataKey="name" width={180} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
           <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => formatShortUSD(v)} />
-          <Bar dataKey="avg" fill={COLORS.primary} radius={[0, 3, 3, 0]} name="Avg USD" />
+          <Bar dataKey="avg" fill={COLORS.primary} radius={[0, 3, 3, 0]} name="Avg USD"
+            onDoubleClick={((d, _i, e) => openInitiativeSelection(String(d.name), e)) as BarEvt}
+            style={{ cursor: 'pointer' }} />
         </BarChart>
       </ChartCard>
 
@@ -209,7 +331,9 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
           <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={countryBy === 'usd' ? formatShortUSD : undefined} />
           <YAxis type="category" dataKey="name" width={140} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
           <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => (countryBy === 'usd' ? formatShortUSD(v) : v.toLocaleString())} />
-          <Bar dataKey={countryBy} fill={countryBy === 'usd' ? COLORS.amber : COLORS.accent} radius={[0, 3, 3, 0]} name={countryBy === 'usd' ? 'USD' : 'Grants'} />
+          <Bar dataKey={countryBy} fill={countryBy === 'usd' ? COLORS.amber : COLORS.accent} radius={[0, 3, 3, 0]} name={countryBy === 'usd' ? 'USD' : 'Grants'}
+            onDoubleClick={((d, _i, e) => openCountrySelection(String(d.name), e)) as BarEvt}
+            style={{ cursor: 'pointer' }} />
         </BarChart>
       </ChartCard>
 
@@ -220,7 +344,9 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
           <XAxis dataKey="label" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
           <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
           <Tooltip contentStyle={tooltipStyle} />
-          <Bar dataKey="count" fill={COLORS.accent} radius={[3, 3, 0, 0]} name="Grants" />
+          <Bar dataKey="count" fill={COLORS.accent} radius={[3, 3, 0, 0]} name="Grants"
+            onDoubleClick={((d, _i, e) => openBucketSelection(String(d.label), e)) as BarEvt}
+            style={{ cursor: 'pointer' }} />
         </BarChart>
       </ChartCard>
 
@@ -237,8 +363,12 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
           <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={(v: number) => (povBy === 'usd' ? formatShortUSD(v) : String(v))} />
           <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => (povBy === 'usd' ? formatShortUSD(v) : v.toLocaleString())} />
           <Legend wrapperStyle={{ fontSize: 11 }} />
-          <Bar dataKey={povBy === 'usd' ? 'indUsd' : 'indCount'} stackId="a" fill={COLORS.people} name="Individuals" radius={[0, 0, 0, 0]} />
-          <Bar dataKey={povBy === 'usd' ? 'orgUsd' : 'orgCount'} stackId="a" fill={COLORS.accent} name="Organizations" radius={[2, 2, 0, 0]} />
+          <Bar dataKey={povBy === 'usd' ? 'indUsd' : 'indCount'} stackId="a" fill={COLORS.people} name="Individuals" radius={[0, 0, 0, 0]}
+            onDoubleClick={((d, _i, e) => openYearSelection(Number(d.year), e, 'ind')) as BarEvt}
+            style={{ cursor: 'pointer' }} />
+          <Bar dataKey={povBy === 'usd' ? 'orgUsd' : 'orgCount'} stackId="a" fill={COLORS.accent} name="Organizations" radius={[2, 2, 0, 0]}
+            onDoubleClick={((d, _i, e) => openYearSelection(Number(d.year), e, 'org')) as BarEvt}
+            style={{ cursor: 'pointer' }} />
         </BarChart>
       </ChartCard>
 
@@ -251,7 +381,9 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
           <YAxis yAxisId="right" orientation="right" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={formatShortUSD} />
           <Tooltip content={<CumulativeTooltip />} />
           <Legend wrapperStyle={{ fontSize: 11 }} />
-          <Bar yAxisId="left" dataKey="variance" name="Annual change" radius={[3, 3, 0, 0]}>
+          <Bar yAxisId="left" dataKey="variance" name="Annual change" radius={[3, 3, 0, 0]}
+            onDoubleClick={((d, _i, e) => openYearSelection(Number(d.year), e)) as BarEvt}
+            style={{ cursor: 'pointer' }}>
             {cumulative.map((d) => (
               <Cell key={d.year} fill={d.variance >= 0 ? COLORS.positive : COLORS.negative} />
             ))}
@@ -260,6 +392,9 @@ const DataDashboard = ({ filteredClean, countryAgg, maxYear, adjust, inflationAd
         </ComposedChart>
       </ChartCard>
     </div>
+    <p className="text-[11px] text-muted-foreground/80 italic mt-3">Tip: double-click any bar to see the grants that make it up.</p>
+    <ChartGrantsPanel selection={selection} onClose={() => setSelection(null)} />
+    </>
   );
 };
 
