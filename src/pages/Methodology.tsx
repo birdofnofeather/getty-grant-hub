@@ -251,7 +251,7 @@ const Methodology = () => (
           <li>Dollar amounts default to as-awarded (nominal); use the inflation-adjust toggle to see them in 2025 dollars.</li>
           <li>There is no information on grant outcomes or on the individuals funded.</li>
           <li><strong className="text-foreground/80">Individual vs. organizational is inferred</strong>, never stated by Getty — see the exact rule under "What counts as a grant to an individual" and judge it for yourself.</li>
-          <li>The headline grantee count is Getty's own official figure from their database; per-country grantee counts are computed here and are approximate, because the same grantee can appear under slightly different name spellings.</li>
+          <li>The headline <strong className="text-foreground/80">Grantees</strong> figure is Getty's own official count, read from their database. Tallying grantees from the grant records instead (as the per-country counts do) runs slightly higher, because some grantees appear under more than one name — Getty's own grant data included — so the two never fully reconcile.</li>
           <li>Ten grants have no recoverable amount, and the current year is always incomplete.</li>
         </ul>
       </Section>
