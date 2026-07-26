@@ -122,3 +122,46 @@ tests pass.
 **Known item, not changed here.** Getty reports **5,354 grantees**; we count **5,406**
 distinct grantee-name strings. This is a name-vs-entity counting difference (name variants,
 acronyms), not a data error — logged for a future reconciliation if wanted.
+
+---
+
+## Individual-vs-organizational reclassification (2026-07-26)
+
+**What changed.** Made the individual/organizational split for the three name-classified initiatives
+rest on the **grantee's name** rather than any amount shortcut, fixing two classes of error. Headline
+grand total is unchanged ($580,967,468); the split moved: **individual 6,566 → 6,588 grants
+($109,094,451 → $109,524,937)**, **organizational 3,405 → 3,383**.
+
+**Why & the two fixes.**
+1. **CEEI amount shortcut removed.** The old rule tagged any *Central and Eastern European Initiative*
+   grant of exactly $5,000 or $10,000 as an individual. Award size isn't a reliable signal — it
+   mislabeled organizations that received $5k/$10k grants (e.g. "The Fund for Arts and Culture in Central
+   and Eastern Europe") as people. CEEI is now decided purely by name. Net effect: 1 grantee (its grants)
+   correctly moves to organizational; no real person is lost.
+2. **Publications now name-classified + keyword list expanded.** "Publications" was added to the
+   name-scoped initiatives, and the organization-keyword list was broadened to catch non-English
+   institutions and publishers (verlag, akademie, universidad, editorial, press, books, collection,
+   conference, N.V., S.A., Co., heritage/historic, etc.). This reclassified **23 grants made to named
+   scholars** (to write/publish a book) from organization → individual, while correctly leaving presses,
+   museums, universities, and learned societies as organizations.
+
+**How we validated it was safe to call "definitive."** For all three initiatives we enumerated every
+distinct grantee and checked the name rule against it: Research Grants reproduced the existing split
+exactly (185/65, zero changes); CEEI produced exactly one org→correct flip and zero people lost;
+Publications produced 23 org→individual flips, every one a real person, and zero real organizations
+misclassified. Every name newly caught by an expanded keyword was verified to be a genuine organization.
+Changes are fully contained to the three initiatives (zero classification changes anywhere else in the
+dataset).
+
+**Mechanics.**
+- Name matching now trims leading whitespace and strips leading title tokens (`Dr.`, `Prof.`, `Assoc.`,
+  `PhDr.`, …) before the 2–4-word person test, so multi-title academic names (e.g. "Assoc. Prof. PhDr.
+  Ladislav Kesner") resolve correctly.
+- `src/lib/classification.ts` and `scripts/getty_logic.py` kept in sync; `SCOPED_INITIATIVES`,
+  `ORG_KEYWORDS`, and `LEADING_TITLES` exported so the methodology page renders the *actual* lists.
+
+**Docs & tests.** Methodology page gained inline "Show the exact rule" panels (importing the live code
+constants, so they can't drift) exposing every classification list, threshold, and ID for expert review;
+`JUDGMENT_CALLS.md` classification section rewritten. Regenerated `getty_grants_agg.json` (+public) and
+`scripts/baselines.json`. Added classification tests (CEEI org regression, Publications scholar vs.
+publisher, keyword-caught orgs, title stripping); full suite 28/28 green; `tsc` and production build pass.

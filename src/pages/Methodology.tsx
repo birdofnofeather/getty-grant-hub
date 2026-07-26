@@ -1,11 +1,47 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ChevronRight } from 'lucide-react';
+import { INDIVIDUAL_INITIATIVES } from '@/lib/grant-types';
+import { HONORIFICS, LEADING_TITLES, SCOPED_INITIATIVES, ORG_KEYWORDS, PST_INITIATIVES, PST_KEEP_ORIGINAL } from '@/lib/classification';
 
 const Section = ({ id, title, children }: { id: string; title: string; children: React.ReactNode }) => (
   <section id={id} className="scroll-mt-20">
     <h2 className="text-lg font-semibold text-foreground mt-8 mb-2">{title}</h2>
     <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">{children}</div>
   </section>
+);
+
+// Collapsible, understated panel holding the precise rule behind a plain-language claim.
+// Aimed at reviewers who know the data and may want to challenge a decision.
+const RuleDetail = ({ children }: { children: React.ReactNode }) => (
+  <details className="group mt-3 rounded-md border border-border bg-card">
+    <summary className="flex cursor-pointer list-none select-none items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+      <ChevronRight className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-90" />
+      Show the exact rule
+    </summary>
+    <div className="space-y-2 border-t border-border px-3 py-3 text-xs leading-relaxed text-muted-foreground">
+      {children}
+    </div>
+  </details>
+);
+
+const Code = ({ children }: { children: React.ReactNode }) => (
+  <code className="rounded bg-background px-1 py-0.5 font-mono text-[11px] text-foreground break-words">{children}</code>
+);
+
+const Chips = ({ items }: { items: string[] }) => (
+  <div className="flex flex-wrap gap-1.5">
+    {items.map((s) => <Code key={s}>{s}</Code>)}
+  </div>
+);
+
+const RuleList = ({ items }: { items: React.ReactNode[] }) => (
+  <ul className="list-disc space-y-1 pl-4 marker:text-muted-foreground">
+    {items.map((it, i) => <li key={i}>{it}</li>)}
+  </ul>
+);
+
+const Lead = ({ children }: { children: React.ReactNode }) => (
+  <span className="font-medium text-foreground/80">{children}</span>
 );
 
 const Methodology = () => (
@@ -23,7 +59,10 @@ const Methodology = () => (
       <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
         This page explains, in plain language, the decisions behind the numbers, maps, and charts on this
         site. If a figure ever looks surprising, the reason is almost certainly explained here. You don't
-        need to know the underlying data to follow along.
+        need to know the underlying data to follow along — but where a decision was a judgment call, a
+        <span className="mx-1 inline-flex items-center gap-1 align-middle rounded border border-border bg-card px-1.5 py-0.5 text-xs text-muted-foreground"><ChevronRight className="h-3 w-3" />Show the exact rule</span>
+        panel reveals the precise lists, thresholds, and record IDs used in the code, so those who know the
+        data can check and challenge them.
       </p>
 
       <Section id="source" title="Data source & updates">
@@ -41,6 +80,22 @@ const Methodology = () => (
           They are kept so the grant <em>count</em> stays accurate, but they add nothing to any dollar
           total and show a dash ("—").
         </p>
+        <RuleDetail>
+          <p><Lead>Schedule.</Lead> GitHub Actions, cron <Code>0 9 5 * *</Code> (5th of each month, 09:00 UTC); also runnable on demand.</p>
+          <p><Lead>Each run.</Lead></p>
+          <RuleList items={[
+            <>Sweep every <Code>grantId</Code> from Getty's grants-database search API.</>,
+            <>Fetch full records only for IDs not already stored, and append them.</>,
+            <>Drop any stored grant whose ID Getty no longer lists.</>,
+            <>Refresh <Code>amountAwarded_USD</Code> and the currency string for existing grants whose value changed; all other stored fields are left untouched.</>,
+          ]} />
+          <p><Lead>Safety gates (all must pass, or nothing is committed and the owner is emailed).</Lead></p>
+          <RuleList items={[
+            <>Abort if removals would exceed <Code>max(50, 5% of stored rows)</Code> while adding nothing new.</>,
+            <>Row-count change must equal (added − removed); no duplicate <Code>grantId</Code>s; required columns present.</>,
+          ]} />
+          <p><Lead>Other.</Lead> Exactly 10 rows have <Code>amountAwarded_USD = 0</Code> (shown "—", counted but never summed). Partial-year flag: <Code>grantAwardYear === current year</Code>. Source: <Code>update_getty_grants.py</Code>.</p>
+        </RuleDetail>
       </Section>
 
       <Section id="individuals" title="What counts as a grant to an individual">
@@ -52,11 +107,29 @@ const Methodology = () => (
         <p>
           Getty's data doesn't flag which grants went to a person, so we infer it from clear signals: some
           programs (internships, fellowships, residencies) only ever fund individuals; a name beginning
-          with a title such as "Dr." or "Ms." is a person; and in a couple of specific programs we
-          recognize individuals by grant size or by names that look like people rather than institutions. A
-          few programs whose names <em>sound</em> personal but actually fund organizations (for example, one
+          with a title such as "Dr." or "Ms." is a person; and in a few specific programs we recognize
+          individuals by whether the grantee's name looks like a person rather than an institution. A few
+          programs whose names <em>sound</em> personal but actually fund organizations (for example, one
           that pays for a staff position at a museum) are deliberately kept on the organization side.
         </p>
+        <RuleDetail>
+          <p>A grant is tagged <Lead>individual</Lead> if <em>any</em> signal below fires (otherwise organizational). Logic lives in <Code>src/lib/classification.ts</Code>, mirrored in <Code>scripts/getty_logic.py</Code>. Classification is inferred by us — Getty never states it.</p>
+          <p><Lead>1 · Initiative only ever funds individuals</Lead> — one of:</p>
+          <Chips items={[...INDIVIDUAL_INITIATIVES]} />
+          <p><Lead>2 · Small Summer Institutes grant</Lead> — initiative <Code>Summer Institutes</Code> with amount under <Code>$5,000</Code>.</p>
+          <p><Lead>3 · Name begins with an honorific</Lead> (leading spaces ignored) — one of:</p>
+          <Chips items={HONORIFICS.map((h) => JSON.stringify(h))} />
+          <p>The trailing spaces on <Code>"Professor "</Code> and <Code>"Miss "</Code> are deliberate, so "Mississippi University for Women" is never misread as "Miss." A regression test guards this.</p>
+          <p><Lead>4 · Grantee name looks like a person</Lead>, but only in these name-classified initiatives:</p>
+          <Chips items={[...SCOPED_INITIATIVES]} />
+          <p>"Looks like a person" = does not contain an organization keyword (below); then, after removing any leading title tokens, the name is 2–4 words with no digits and only letters, hyphens, apostrophes, or periods.</p>
+          <p>Leading title tokens removed first: <Chips items={[...LEADING_TITLES]} /></p>
+          <p><Lead>Organization keyword test</Lead> (case-insensitive; if it matches, the grantee is treated as an organization):</p>
+          <p><Code>{ORG_KEYWORDS.source}</Code></p>
+          <p className="text-amber-500">
+            <Lead>Changed July 2026 (reviewers, note):</Lead> the old rule "a Central &amp; Eastern European Initiative grant of exactly $5,000 or $10,000 is an individual" was removed — it mislabeled organizations that happened to receive $5k/$10k grants (e.g. "The Fund for Arts and Culture in Central and Eastern Europe"). "Publications" was added to the name-classified list, reclassifying 23 scholar-authored grants from organization to individual; and the organization keyword list was expanded to catch non-English institutions and publishers.
+          </p>
+        </RuleDetail>
       </Section>
 
       <Section id="mapping" title="Where grants appear on the map">
@@ -74,12 +147,25 @@ const Methodology = () => (
           figure is unaffected, since it always counted each grant once.
         </p>
         <p>
-          Grants under the "Pacific Standard Time: LA/LA" and "PST ART: Art & Science Collide" initiatives
+          Grants under the "Pacific Standard Time: LA/LA" and "PST ART: Art &amp; Science Collide" initiatives
           funded exhibitions and programs <em>about</em> other regions that took place <em>in</em> Los
           Angeles, so they are mapped to Los Angeles rather than scattered across the countries they
           depict (with three documented Pacific Standard Time: LA/LA exceptions that genuinely funded
           work abroad). The four parts of the United Kingdom are combined into one country for shading.
         </p>
+        <RuleDetail>
+          <p><Lead>Location priority.</Lead></p>
+          <RuleList items={[
+            <>Project locations (<Code>projectLocation_countries</Code>) — one map point per distinct country; the "Los Angeles" city hint attaches only to the U.S. point.</>,
+            <>If none, the grantee's country.</>,
+            <>If neither, unmapped (2 grants).</>,
+          ]} />
+          <p><Lead>United Kingdom.</Lead> England, Scotland, Wales and Northern Ireland all map to <Code>United Kingdom</Code> (ISO <Code>GB</Code>).</p>
+          <p><Lead>Even split.</Lead> A country's share of a grant = <Code>amount ÷ N</Code>, where <Code>N</Code> = distinct countries the grant maps to <em>after</em> the PST override. <Code>N</Code> keeps the U.S. even when the Exclude-U.S. toggle is on.</p>
+          <p><Lead>PST → Los Angeles.</Lead> Grants in these initiatives collapse to one Los Angeles, USA point:</p>
+          <Chips items={[...PST_INITIATIVES]} />
+          <p>Three grant IDs are whitelisted to keep their original overseas locations: <Code>{[...PST_KEEP_ORIGINAL].join(', ')}</Code>. Source: <Code>clean_getty_grants.py</Code>, <Code>src/hooks/use-grant-data.ts</Code>.</p>
+        </RuleDetail>
       </Section>
 
       <Section id="colors" title="How the map is shaded">
@@ -91,6 +177,15 @@ const Methodology = () => (
           use an amber scale and counts use a blue scale, so you can tell at a glance which measure you're
           viewing. These choices follow accepted practice for readable, colorblind-considerate maps.
         </p>
+        <RuleDetail>
+          <RuleList items={[
+            <>Value → color via a <strong>logarithmic</strong> scale across the visible range.</>,
+            <>The U.S. is <strong>capped</strong> at the second-highest country's value for shading only; its true total is unchanged in tooltips and tables.</>,
+            <>Two ramps: <span className="text-amber-500">amber</span> for dollars, <span className="text-blue-400">blue</span> for counts/other; dim → bright on the dark background, interpolated in HCL and verified monotonic in luminance.</>,
+            <>The low end stays distinct from the grey "no-grant" hatch by both hue and luminance.</>,
+          ]} />
+          <p>Source: <Code>src/lib/map-colors.ts</Code>, <Code>src/components/WorldMap.tsx</Code>.</p>
+        </RuleDetail>
       </Section>
 
       <Section id="exclude-us" title="Excluding U.S. grants">
@@ -102,6 +197,15 @@ const Methodology = () => (
           each, and contributes $232,200 (four fifths) to the headline totals and to every dollar
           chart. Grants that touch only non-U.S. countries are unaffected.
         </p>
+        <RuleDetail>
+          <p>For a grant with post-PST country set <Code>C</Code>:</p>
+          <RuleList items={[
+            <>U.S. not in <Code>C</Code> → unaffected.</>,
+            <>U.S. is the only country in <Code>C</Code> → dropped entirely.</>,
+            <>Otherwise → amount scaled by <Code>(|C| − 1) / |C|</Code> and the U.S. map point removed.</>,
+          ]} />
+          <p>The denominator <Code>|C|</Code> includes the U.S., so a 5-country grant keeps four-fifths. Source: <Code>src/hooks/use-grant-data.ts</Code>.</p>
+        </RuleDetail>
       </Section>
 
       <Section id="inflation" title="Adjusting for inflation">
@@ -123,6 +227,15 @@ const Methodology = () => (
           series in the Data view use adjusted amounts; grant counts and the Grant Size Distribution
           (which is about award size at the time) remain nominal.
         </p>
+        <RuleDetail>
+          <RuleList items={[
+            <>Factor = <Code>CPI(2025) / CPI(Y)</Code>, CPI-U annual averages (1982–84 = 100).</>,
+            <>Reference year 2025 = latest complete annual BLS release.</>,
+            <>Current, still-open year uses factor <Code>1</Code> (slightly understates real value).</>,
+            <>Applies to dollar series only; counts and the grant-size distribution stay nominal.</>,
+          ]} />
+          <p>Source: <Code>src/lib/inflation.ts</Code>.</p>
+        </RuleDetail>
       </Section>
 
       <Section id="limits" title="What this data can and cannot show">
@@ -132,6 +245,8 @@ const Methodology = () => (
           <li>Locations are country-level; Los Angeles is the only city the source data pinpoints.</li>
           <li>Dollar amounts default to as-awarded (nominal); use the inflation-adjust toggle to see them in 2025 dollars.</li>
           <li>There is no information on grant outcomes or on the individuals funded.</li>
+          <li><strong className="text-foreground/80">Individual vs. organizational is inferred</strong>, never stated by Getty — see the exact rule under "What counts as a grant to an individual" and judge it for yourself.</li>
+          <li>Getty reports 5,354 grantees; we count 5,406 distinct grantee-name strings (name variants and acronyms split apart), so grantee <em>counts</em> are approximate.</li>
           <li>Ten grants have no recoverable amount, and the current year is always incomplete.</li>
         </ul>
       </Section>

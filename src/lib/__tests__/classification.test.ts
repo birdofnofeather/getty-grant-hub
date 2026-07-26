@@ -20,17 +20,33 @@ describe('individual vs organizational classification', () => {
     expect(isIndividualGrant(g('Summer Institutes', 1890, 'Jane Roe'))).toBe(true);
     expect(isIndividualGrant(g('Summer Institutes', 16000, 'The Big Institute'))).toBe(false);
   });
-  it('CEEI amount rule', () => {
-    expect(isIndividualGrant(g('Central and Eastern European Initiative', 5000, 'Anon Person'))).toBe(true);
-    expect(isIndividualGrant(g('Central and Eastern European Initiative', 10000, 'Anon Person'))).toBe(true);
-    expect(isIndividualGrant(g('Central and Eastern European Initiative', 10800, 'Some Fondation'))).toBe(false);
+  it('CEEI is classified by grantee name, not amount (old $5k/$10k rule removed)', () => {
+    // a person is individual regardless of amount
+    expect(isIndividualGrant(g('Central and Eastern European Initiative', 5000, 'Zdeno Kolesár'))).toBe(true);
+    // the regression this fixes: an organization that happened to receive a $5k/$10k grant
+    // used to be mislabeled individual — it must now be organizational
+    expect(isIndividualGrant(g('Central and Eastern European Initiative', 5000, 'The Fund for Arts and Culture in Central and Eastern Europe'))).toBe(false);
+    expect(isIndividualGrant(g('Central and Eastern European Initiative', 10000, 'The Fund for Arts and Culture in Central and Eastern Europe'))).toBe(false);
+    // a multi-title academic name still resolves to a person
+    expect(isIndividualGrant(g('Central and Eastern European Initiative', 8000, 'Assoc. Prof. PhDr. Ladislav Kesner'))).toBe(true);
   });
-  it('name-pattern heuristic only in scoped initiatives', () => {
+  it('name-pattern heuristic applies only in scoped initiatives', () => {
     expect(isIndividualGrant(g('Research Grants (Team and Individual)', 28000, 'Anthony Molho'))).toBe(true);
-    expect(isIndividualGrant(g('Publications', 28000, 'Anthony Molho'))).toBe(false); // not a scoped initiative
+    expect(isIndividualGrant(g('Publications', 28000, 'Anthony Molho'))).toBe(true); // Publications is now name-scoped
+    expect(isIndividualGrant(g('Keeping It Modern', 28000, 'Anthony Molho'))).toBe(false); // not a scoped initiative
+  });
+  it('Publications: scholars are individuals, publishers/institutions are organizations', () => {
+    expect(isIndividualGrant(g('Publications', 20000, 'Richard De Puma'))).toBe(true);
+    expect(isIndividualGrant(g('Publications', 20000, 'Akademie Verlag'))).toBe(false);
+    expect(isIndividualGrant(g('Publications', 20000, 'The Frick Collection'))).toBe(false);
+    expect(isIndividualGrant(g('Publications', 20000, 'Historic England'))).toBe(false);
+    expect(isIndividualGrant(g('Publications', 20000, 'Universidad Nacional Autónoma de México'))).toBe(false);
+    expect(isIndividualGrant(g('Publications', 20000, ' Dr. Thomas Gaehtgens'))).toBe(true); // leading-space honorific
   });
   it('org keywords beat the name heuristic', () => {
     expect(looksLikePersonName('Courtauld Institute of Art')).toBe(false);
+    expect(looksLikePersonName('Akademie Verlag')).toBe(false);
+    expect(looksLikePersonName('Ashgate Publishing Limited')).toBe(false);
     expect(looksLikePersonName('Anthony Molho')).toBe(true);
   });
 

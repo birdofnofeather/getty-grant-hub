@@ -93,13 +93,33 @@ of all grants but only about one-fifth of the dollars. Mixing them with big inst
 hides both stories. A toggle on the site — "Organizational grants only" — lets you set the personal
 grants aside and see institutional giving on its own.
 
-**How we decide.** Getty's data doesn't flag which grants went to a person, so we infer it using a
-few clear signals: some programs (internships, fellowships, residencies) only ever fund individuals;
-a name beginning with a title like "Dr." or "Ms." is a person; and in a couple of specific programs
-we recognize individuals by their grant size or by names that look like people rather than
-institutions. A few programs whose names *sound* personal but actually fund organizations (for
-example, a program that pays for a staff position at a museum) are deliberately kept on the
-organization side.
+**How we decide.** Getty's data doesn't flag which grants went to a person, so we infer it from the
+grantee's name using a few clear signals: some programs (internships, fellowships, residencies) only
+ever fund individuals; a name beginning with a title like "Dr." or "Ms." is a person; and in three
+specific programs — Central and Eastern European Initiative, Research Grants (Team and Individual), and
+Publications — we look at whether the grantee's name is a person's name or an institution's. A few
+programs whose names *sound* personal but actually fund organizations (for example, a program that pays
+for a staff position at a museum) are deliberately kept on the organization side.
+
+**★ How we tell a person's name from an institution's (updated July 2026).** For those three
+name-classified programs, a grantee counts as an individual only if the name looks like a person: after
+setting aside any leading title ("Dr.", "Prof.", "Assoc.", and so on), the name is two to four words of
+ordinary name characters and contains none of our organization keywords (words like "university",
+"museum", "foundation", "press", "verlag", "academie", "collection" and many more, across several
+languages). Two fixes in July 2026 made this reliable:
+
+- We removed an old shortcut that treated any Central and Eastern European Initiative grant of exactly
+  $5,000 or $10,000 as an individual. Award size is not a trustworthy signal — that shortcut wrongly
+  counted organizations that happened to receive a $5,000 or $10,000 grant (such as "The Fund for Arts and
+  Culture in Central and Eastern Europe") as people. Classification now rests on the name alone.
+- We added "Publications" to the name-classified programs and broadened the organization keyword list to
+  recognize non-English institutions and publishers. This moved 23 grants made to named scholars (to write
+  or publish a book) from the organization side to the individual side, where they belong, while correctly
+  leaving presses, museums, universities, and learned societies as organizations.
+
+These rules are encoded in `src/lib/classification.ts` and mirrored in `scripts/getty_logic.py`; the public
+methodology page shows the exact lists behind an expandable "Show the exact rule" panel so reviewers who
+know the data can check and dispute them.
 
 **One tricky edge case, on purpose.** "Mississippi University for Women Foundation" begins with the
 letters "Miss," which could be mistaken for the title "Miss." We specifically prevent that

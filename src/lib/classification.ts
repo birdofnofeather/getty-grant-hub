@@ -9,19 +9,29 @@ export function stripHtml(s: string): string {
 
 export const HONORIFICS = ['Mr.', 'Ms.', 'Mrs.', 'Dr.', 'Professor ', 'Prof.', 'Miss ', 'Arq.'];
 
-const SCOPED_INITIATIVES = new Set([
+export const SCOPED_INITIATIVES = new Set([
   'Central and Eastern European Initiative',
   'Research Grants (Team and Individual)',
+  'Publications',
 ]);
 
-const ORG_KEYWORDS = /university|college|collegium|museum|institute|institut|foundation|fondation|stiftung|association|asociaci[oó]n|center|centre|academy|library|council|society|trust|fund|school|gallery|archive|research|national|international|royal|state|federal|regents|board|directorate|seminar|forum|program|programme|office|department|ministry|government|authority|agency|committee|commission|corporation|company|inc\.|ltd\.|llc|arts$/i;
+// Leading title tokens stripped before person-name matching (academic / courtesy titles).
+export const LEADING_TITLES = new Set([
+  'dr.', 'dr', 'mr.', 'ms.', 'mrs.', 'prof.', 'professor', 'miss', 'arq.', 'assoc.', 'phdr.',
+  'mx.', 'm.', 'doç.', 'doc.', 'sir', 'dame', 'hon.', 'ph.d.', 'phd.',
+]);
+
+export const ORG_KEYWORDS = /university|college|collegium|museum|institute|institut|foundation|fondation|stiftung|association|asociaci[oó]n|center|centre|academy|library|council|society|trust|fund|school|gallery|archive|research|national|international|royal|state|federal|regents|board|directorate|seminar|forum|program|programme|office|department|ministry|government|authority|agency|committee|commission|corporation|company|inc\.|ltd\.|llc|verlag|akademie|akademia|academie|académie|universidad|università|universit[eé]|universität|universitat|editorial|edizioni|ediciones|éditions|\beditions\b|publish|\bpress\b|\bbooks?\b|comit[ée]|comitato|\bente\b|\bleague\b|ligue|\bcollection\b|collezione|colecci[oó]n|\bconference\b|congress|congreso|colloqu|symposium|gesellschaft|verein|santuario|pontific|passionist|gmbh|\bltda\b|\blimited\b|\bco\.|\bn\.v\.|\bb\.v\.|\bs\.a\.|\bs\.l\.|\bs\.p\.a\.|heritage|\bhistoric|arts$/i;
 
 export function looksLikePersonName(name: string): boolean {
   if (!name || typeof name !== 'string') return false;
-  if (ORG_KEYWORDS.test(name)) return false;
-  const words = name.trim().split(/\s+/);
+  const trimmed = name.trim();
+  if (!trimmed) return false;
+  if (ORG_KEYWORDS.test(trimmed)) return false;
+  if (/\d/.test(trimmed)) return false;
+  let words = trimmed.split(/\s+/);
+  while (words.length && LEADING_TITLES.has(words[0].toLowerCase())) words = words.slice(1);
   if (words.length < 2 || words.length > 4) return false;
-  if (/\d/.test(name)) return false;
   for (const word of words) {
     if (!/^[A-Za-zÀ-ÖØ-öø-ÿ\-'.]+$/.test(word)) return false;
   }
@@ -29,19 +39,18 @@ export function looksLikePersonName(name: string): boolean {
 }
 
 export function isIndividualGrant(row: { initiative: string; amountAwarded_USD: number; grantee_name: string }): boolean {
+  const name = (row.grantee_name ?? '').trim();
   // Signal 1: Initiative-level blanket rules
   if (INDIV_SET.has(row.initiative)) return true;
   if (row.initiative === 'Summer Institutes' && row.amountAwarded_USD < 5000) return true;
-  // Signal 2: Honorific prefix check
-  if (HONORIFICS.some((h) => row.grantee_name.startsWith(h))) return true;
-  // Signal 3: CEEI amount rule
-  if (row.initiative === 'Central and Eastern European Initiative') {
-    const amt = row.amountAwarded_USD;
-    if (amt === 5000 || amt === 10000) return true;
-  }
-  // Signal 4: Name-pattern heuristic for scoped initiatives
+  // Signal 2: Honorific / title prefix check
+  if (HONORIFICS.some((h) => name.startsWith(h))) return true;
+  // Signal 3: Scoped initiatives (CEEI, Research Grants, Publications) — decide by grantee name.
+  // A person is identified by honorific/title or a person-name shape; organizations are caught
+  // by the keyword list in looksLikePersonName. (The old CEEI "amount === $5k/$10k means
+  // individual" rule was removed 2026-07 — it mislabeled orgs that received $5k/$10k grants.)
   if (SCOPED_INITIATIVES.has(row.initiative)) {
-    if (looksLikePersonName(row.grantee_name)) return true;
+    if (looksLikePersonName(name)) return true;
   }
   return false;
 }

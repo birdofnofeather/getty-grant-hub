@@ -29,14 +29,27 @@ HONORIFICS = ('Mr.', 'Ms.', 'Mrs.', 'Dr.', 'Professor ', 'Prof.', 'Miss ', 'Arq.
 SCOPED_INITIATIVES = {
     'Central and Eastern European Initiative',
     'Research Grants (Team and Individual)',
+    'Publications',
 }
+
+# Leading title tokens stripped before person-name matching (academic / courtesy titles).
+LEADING_TITLES = {'dr.', 'dr', 'mr.', 'ms.', 'mrs.', 'prof.', 'professor', 'miss', 'arq.',
+                  'assoc.', 'phdr.', 'mx.', 'm.', 'doç.', 'doc.', 'sir', 'dame', 'hon.',
+                  'ph.d.', 'phd.'}
 ORG_KEYWORDS = re.compile(
     r"university|college|collegium|museum|institute|institut|foundation|fondation|"
     r"stiftung|association|asociaci[oó]n|center|centre|academy|library|council|"
     r"society|trust|fund|school|gallery|archive|research|national|international|royal|"
     r"state|federal|regents|board|directorate|seminar|forum|program|programme|office|"
     r"department|ministry|government|authority|agency|committee|commission|corporation|"
-    r"company|inc\.|ltd\.|llc|arts$",
+    r"company|inc\.|ltd\.|llc|"
+    # publishers, learned societies, and non-English institution words (added 2026-07)
+    r"verlag|akademie|akademia|academie|académie|universidad|università|universit[eé]|"
+    r"universität|universitat|editorial|edizioni|ediciones|éditions|\beditions\b|publish|"
+    r"\bpress\b|\bbooks?\b|comit[ée]|comitato|\bente\b|\bleague\b|ligue|\bcollection\b|"
+    r"collezione|colecci[oó]n|\bconference\b|congress|congreso|colloqu|symposium|"
+    r"gesellschaft|verein|santuario|pontific|passionist|gmbh|\bltda\b|\blimited\b|\bco\.|"
+    r"\bn\.v\.|\bb\.v\.|\bs\.a\.|\bs\.l\.|\bs\.p\.a\.|heritage|\bhistoric|arts$",
     re.I,
 )
 PST_INITIATIVES = {
@@ -54,14 +67,19 @@ def strip_html(s):
 
 
 def looks_like_person(name):
-    if not isinstance(name, str) or not name:
+    if not isinstance(name, str):
+        return False
+    name = name.strip()
+    if not name:
         return False
     if ORG_KEYWORDS.search(name):
         return False
-    words = name.strip().split()
-    if len(words) < 2 or len(words) > 4:
-        return False
     if re.search(r'\d', name):
+        return False
+    words = name.split()
+    while words and words[0].lower() in LEADING_TITLES:
+        words = words[1:]
+    if len(words) < 2 or len(words) > 4:
         return False
     return all(re.fullmatch(r"[A-Za-zÀ-ÖØ-öø-ÿ\-'.]+", w) for w in words)
 
@@ -69,15 +87,17 @@ def looks_like_person(name):
 def is_individual(initiative, amount, grantee_name):
     initiative = strip_html(initiative)
     amount = amount or 0
-    name = grantee_name if isinstance(grantee_name, str) else ''
+    name = grantee_name.strip() if isinstance(grantee_name, str) else ''
     if initiative in INDIVIDUAL_INITIATIVES:
         return True
     if initiative == 'Summer Institutes' and amount < 5000:
         return True
     if any(name.startswith(h) for h in HONORIFICS):
         return True
-    if initiative == 'Central and Eastern European Initiative' and amount in (5000, 10000):
-        return True
+    # Scoped initiatives (CEEI, Research Grants, Publications): decide by grantee name.
+    # Individuals are identified by honorific/title or a person-name shape; organizations
+    # are caught by the keyword list in looks_like_person. (The old CEEI "amount == $5k/$10k
+    # means individual" rule was removed 2026-07 — it mislabeled orgs that received $5k/$10k.)
     if initiative in SCOPED_INITIATIVES and looks_like_person(name):
         return True
     return False
