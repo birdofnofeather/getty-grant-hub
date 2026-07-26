@@ -127,6 +127,10 @@ const Index = () => {
               <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Number of Grants</div>
               <div className="text-2xl font-bold text-foreground tabular-nums">{formatNum(headlineStats.grantCount)}</div>
             </div>
+            <div className="flex-1 bg-card rounded-lg border p-4 shadow-sm">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Grantees</div>
+              <div className="text-2xl font-bold text-foreground tabular-nums">{headlineStats.granteeCount != null ? formatNum(headlineStats.granteeCount) : '—'}</div>
+            </div>
           </div>
         )}
 

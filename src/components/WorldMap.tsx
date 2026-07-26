@@ -8,7 +8,7 @@ import {
 import { Maximize, Minimize, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import type { CountryAgg, ChoroplethMetric } from '@/lib/grant-types';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { getColorRange, hclGradient, makeColorScale } from '@/lib/map-colors';
+import { makeColorScale } from '@/lib/map-colors';
 
 const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
 
@@ -110,35 +110,26 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
   const zoomOut = useCallback(() => setPosition((p) => ({ ...p, zoom: Math.max(p.zoom / 1.5, 1) })), []);
   const resetZoom = useCallback(() => setPosition({ coordinates: [0, 0], zoom: 1 }), []);
 
-  // Cap the domain at the second-highest country's value so the single top
-  // country (often the US, or the next leader when the US is excluded) renders
-  // at full intensity without collapsing the scale for everyone else.
-  const cappedMax = useMemo(() => {
-    const values = Array.from(countryAgg.values())
-      .map((a) => getMetricValue(a, metric))
-      .filter((v) => v > 0)
-      .sort((a, b) => b - a);
-    if (values.length === 0) return null;
-    return values.length > 1 ? values[1] : values[0];
-  }, [countryAgg, metric]);
-
+  // Quantile (equal-count) colour classification over the CURRENTLY VISIBLE
+  // countries. The distribution is extremely right-skewed, so a continuous scale
+  // collapses the long tail; equal-count classes keep mid/low recipients
+  // distinguishable and give the top recipients the brightest class on their own.
+  // It recomputes over whatever is on the map, so excluding the U.S. re-spreads
+  // the scale and the new leaders jump out.
   const colorScale = useMemo(() => {
-    if (metric === 'none' || cappedMax == null) return null;
-    const allValues = Array.from(countryAgg.values()).map((a) => getMetricValue(a, metric)).filter((v) => v > 0);
-    const min = Math.min(...allValues);
-    if (min === cappedMax) return null;
-    return makeColorScale(min, cappedMax, metric);
-  }, [countryAgg, metric, cappedMax]);
-
-  const legendRange = useMemo(() => {
-    if (metric === 'none' || !colorScale || cappedMax == null) return null;
+    if (metric === 'none') return null;
     const allValues = Array.from(countryAgg.values()).map((a) => getMetricValue(a, metric)).filter((v) => v > 0);
     if (allValues.length === 0) return null;
-    const min = Math.max(Math.min(...allValues), 1);
-    const [colorMin, colorMax] = getColorRange(metric);
+    return makeColorScale(allValues, metric);
+  }, [countryAgg, metric]);
+
+  const legendRange = useMemo(() => {
+    if (metric === 'none' || !colorScale) return null;
+    const allValues = Array.from(countryAgg.values()).map((a) => getMetricValue(a, metric)).filter((v) => v > 0);
+    if (allValues.length === 0) return null;
     const fmt = metric === 'totalUSD' ? formatUSD : formatNum;
-    return { colorMin, colorMax, gradient: hclGradient(colorMin, colorMax), minLabel: fmt(Math.round(min)), maxLabel: fmt(Math.round(cappedMax)) };
-  }, [countryAgg, metric, colorScale, cappedMax]);
+    return { ramp: colorScale.ramp, minLabel: fmt(Math.round(Math.min(...allValues))), maxLabel: fmt(Math.round(Math.max(...allValues))) };
+  }, [countryAgg, metric, colorScale]);
 
 
   const toggleFullscreen = useCallback(() => {
@@ -210,18 +201,16 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
       {metric !== 'none' && legendRange && (
         <div className="absolute bottom-4 left-4 z-20 bg-black/60 backdrop-blur-sm rounded-lg p-3 text-white/90 text-xs">
           <div className="font-medium mb-2">{getMetricLabel(metric)}</div>
-          <div
-            className="rounded overflow-hidden"
-            style={{
-              height: 12,
-              width: 192,
-              background: legendRange.gradient,
-            }}
-          />
+          <div className="flex overflow-hidden rounded" style={{ width: 192 }}>
+            {legendRange.ramp.map((c, i) => (
+              <div key={i} style={{ backgroundColor: c, height: 12, flex: 1 }} />
+            ))}
+          </div>
           <div className="flex justify-between mt-1" style={{ width: 192 }}>
             <span className="text-[10px] text-white/60">{legendRange.minLabel}</span>
             <span className="text-[10px] text-white/60">{legendRange.maxLabel}</span>
           </div>
+          <div className="text-[9px] text-white/40 mt-1">Equal-count classes; brighter = more</div>
         </div>
       )}
 
@@ -255,7 +244,7 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
                     fill = UNIFORM_COLOR;
                   } else if (colorScale) {
                     const val = getMetricValue(agg!, metric);
-                    fill = colorScale(val);
+                    fill = colorScale.color(val);
                   } else {
                     fill = UNIFORM_COLOR;
                   }

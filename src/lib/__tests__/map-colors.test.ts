@@ -1,36 +1,45 @@
 import { describe, it, expect } from 'vitest';
-import { getColorRange, makeColorScale } from '@/lib/map-colors';
+import { getColorRange, getRamp, makeColorScale } from '@/lib/map-colors';
 
 function relLum(rgb: string): number {
-  const m = rgb.match(/\d+(\.\d+)?/g)!.map(Number);
+  // accepts "#rrggbb" or "rgb(r,g,b)"
+  let m: number[];
+  if (rgb.startsWith('#')) m = rgb.replace('#', '').match(/../g)!.map((h) => parseInt(h, 16));
+  else m = rgb.match(/\d+(\.\d+)?/g)!.map(Number);
   const f = (c: number) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
   return 0.2126 * f(m[0]) + 0.7152 * f(m[1]) + 0.0722 * f(m[2]);
 }
 
 describe('choropleth colour scale', () => {
-  it('dollars use amber, counts use blue', () => {
-    expect(getColorRange('totalUSD')).toEqual(['#fcd34d', '#9a3412']);
-    expect(getColorRange('grantCount')).toEqual(['#93c5fd', '#1d4ed8']);
-    // advanced metrics fold into the blue family (no green)
-    expect(getColorRange('uniqueGrantees')).toEqual(['#93c5fd', '#1d4ed8']);
-    expect(getColorRange('longevity')).toEqual(['#93c5fd', '#1d4ed8']);
+  it('dollars use amber, counts/other use blue', () => {
+    expect(getRamp('totalUSD')[0]).toMatch(/^#/);
+    expect(getRamp('grantCount')).toEqual(getRamp('uniqueGrantees'));
+    expect(getRamp('grantCount')).toEqual(getRamp('longevity'));
+    expect(getRamp('totalUSD')).not.toEqual(getRamp('grantCount'));
   });
 
-  it('low value = bright end, high value = dark end (bright→dark for dark bg)', () => {
-    const scale = makeColorScale(1, 1000, 'grantCount');
-    const lo = scale(1);
-    const hi = scale(1000);
-    expect(relLum(lo)).toBeGreaterThan(relLum(hi)); // darker = more
+  it('ramps run dim -> bright (monotonically increasing luminance)', () => {
+    for (const metric of ['totalUSD', 'grantCount'] as const) {
+      const lums = getRamp(metric).map(relLum);
+      for (let i = 1; i < lums.length; i++) expect(lums[i]).toBeGreaterThan(lums[i - 1]);
+    }
   });
 
-  it('is monotonically decreasing in luminance across the range', () => {
-    const scale = makeColorScale(1, 1000, 'grantCount');
-    const lums = [1, 5, 20, 80, 300, 1000].map((v) => relLum(scale(v)));
-    for (let i = 1; i < lums.length; i++) expect(lums[i]).toBeLessThan(lums[i - 1]);
+  it('brighter = more: the largest value is brighter than the smallest', () => {
+    const vals = [1, 2, 3, 5, 8, 13, 40, 120, 900, 5000];
+    const s = makeColorScale(vals, 'grantCount');
+    expect(relLum(s.color(5000))).toBeGreaterThan(relLum(s.color(1)));
   });
 
-  it('values at/above the capped max clamp to the dark end', () => {
-    const scale = makeColorScale(1, 1000, 'totalUSD');
-    expect(scale(1000)).toBe(scale(5000)); // clamp — US (capped) renders at max
+  it('equal-count quantile: top value lands in the brightest class, bottom in the dimmest', () => {
+    const vals = [1, 1, 2, 2, 3, 3, 90, 90, 5000, 5000];
+    const s = makeColorScale(vals, 'totalUSD');
+    expect(s.color(5000)).toBe(s.ramp[s.ramp.length - 1]);
+    expect(s.color(1)).toBe(s.ramp[0]);
+  });
+
+  it('a country with no value renders at the dimmest class, not blank', () => {
+    const s = makeColorScale([10, 20, 30], 'grantCount');
+    expect(s.color(0)).toBe(s.ramp[0]);
   });
 });

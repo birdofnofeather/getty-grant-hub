@@ -7,6 +7,7 @@ export interface CleanGrant {
   initiativeType: string;
   pastInitiative: string;
   grantee_name: string;
+  grantee_sortName: string;
   projectTitle_clean: string;
   projectTitleURL: string;
   is_partial_year: boolean;
@@ -95,6 +96,8 @@ export interface AggCountry {
 export interface AggData {
   generated: string;
   maxYear: number;
+  // Getty's own authoritative headline stats, read from their API at build time.
+  source_stats?: { grantees_total: number; funding_total: number; as_of: string };
   headline: { grantCount: number; totalUSD: number };
   headlineOrg: { grantCount: number; totalUSD: number };
   years: { year: number; count: number; usd: number; countOrg: number; usdOrg: number }[];

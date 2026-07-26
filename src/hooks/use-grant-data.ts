@@ -60,6 +60,7 @@ function parseClean(row: Record<string, string>): CleanGrant {
     initiativeType: stripHtml(row.initiativeType || ''),
     pastInitiative: row.pastInitiative || '',
     grantee_name: row.grantee_name || '',
+    grantee_sortName: row.grantee_sortName || '',
     projectTitle_clean: row.projectTitle_clean || '',
     projectTitleURL: row.projectTitleURL || '',
     is_partial_year: (row.is_partial_year || '').toLowerCase() === 'true',
@@ -220,17 +221,26 @@ export function useGrantData(filters: FilterState) {
   }, [cleanData, filters, grantCountries]);
 
   const headlineStats = useMemo(() => {
+    // Getty's own authoritative grantee count (from their API); used at full scope so
+    // the headline always matches the source database. Distinct grantees for filtered
+    // subsets are computed from the canonical sortName key.
+    const officialGrantees = aggData?.source_stats?.grantees_total ?? null;
+    const fullScope = !!aggData && isFullScope(filters, aggData.maxYear) && !filters.orgOnly;
+    const distinctGrantees = (rows: CleanGrant[]) =>
+      new Set(rows.map((r) => (r.grantee_sortName || r.grantee_name).trim().toUpperCase())).size;
+
     // Before the full CSVs arrive, serve the default (and org-only) totals from the
     // tiny precomputed aggregates so the headline is correct and instant.
     if (!csvReady && aggData && !filters.excludeUS && !filters.inflationAdjust) {
       const h = filters.orgOnly ? aggData.headlineOrg : aggData.headline;
-      return { totalUSD: h.totalUSD, grantCount: h.grantCount, hasPartialYear: filters.yearRange[1] >= aggData.maxYear };
+      return { totalUSD: h.totalUSD, grantCount: h.grantCount, granteeCount: officialGrantees, hasPartialYear: filters.yearRange[1] >= aggData.maxYear };
     }
     const totalUSD = filteredClean.reduce((s, r) => s + adjust(r.amountAwarded_USD, r.grantAwardYear), 0);
     const grantCount = filteredClean.length;
+    const granteeCount = fullScope && officialGrantees != null ? officialGrantees : distinctGrantees(filteredClean);
     const hasPartialYear = filteredClean.some((r) => r.is_partial_year && r.grantAwardYear >= filters.yearRange[0] && r.grantAwardYear <= filters.yearRange[1]);
-    return { totalUSD, grantCount, hasPartialYear };
-  }, [csvReady, aggData, filters.orgOnly, filters.excludeUS, filters.inflationAdjust, filteredClean, filters.yearRange, adjust]);
+    return { totalUSD, grantCount, granteeCount, hasPartialYear };
+  }, [csvReady, aggData, filters, filteredClean, adjust]);
 
   // Raw unscaled lookup for the per-country split math. Uses the full cleanData
   // so filteredClean's excludeUS scaling doesn't double-apply here.

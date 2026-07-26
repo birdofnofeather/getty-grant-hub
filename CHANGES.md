@@ -165,3 +165,38 @@ constants, so they can't drift) exposing every classification list, threshold, a
 `JUDGMENT_CALLS.md` classification section rewritten. Regenerated `getty_grants_agg.json` (+public) and
 `scripts/baselines.json`. Added classification tests (CEEI org regression, Publications scholar vs.
 publisher, keyword-caught orgs, title stripping); full suite 28/28 green; `tsc` and production build pass.
+
+---
+
+## Grantee count, choropleth colour scale, methodology polish (2026-07-26)
+
+**Grantee count now matches the source exactly (headline).** Our data has 5,401–5,406 distinct grantees
+(by canonical sort-name / by raw name) versus Getty's official 5,354 — Getty merges grantee entities via
+an internal ID not exposed per grant, so ~50 name variants stay split in our rows. Fix: `build_aggregates.py`
+now reads Getty's authoritative `stats` (`grantees_total`, `funding_total`) from their API and stores them
+in `getty_grants_agg.json` as `source_stats`; the site shows Getty's official grantee total in a new
+**Grantees** headline KPI at full scope, and computes distinct grantees (canonical sort-name) for filtered
+views. `grantee_sortName` is now parsed client-side. (Reconciliation check: # grants 9,971 = 9,971 ✓;
+awarded total $580,967,468 = $580,967,468 ✓; grantees headline = Getty official 5,354 ✓; data-level distinct
+grantees remain ~5,401 and cannot be reduced to 5,354 without Getty's entity IDs.)
+
+**Choropleth colour scale reworked for the skewed distribution.** Replaced the continuous log scale +
+"cap the US at the second-highest value" hack with **quantile (equal-count) classification** into 6 classes
+(`src/lib/map-colors.ts`), computed over the currently-visible countries. Ramps now run dim→bright
+(brighter = more, monotonic in luminance) so the top recipients pop on the dark background; amber = dollars,
+blue = counts/other. Because classes recompute over what's shown, **excluding the U.S. re-spreads the scale**
+and the next tier of leaders stands out — the behaviour that was previously washed out. Legend is now a
+discrete class strip. `makeColorScale(values[], metric)` returns `{color, thresholds, ramp}`.
+
+**Methodology page.** Per request, superseded rules no longer appear on the page (history lives here in the
+changelog): removed the "Changed July 2026" note from the classification panel. The PST exceptions are now
+described by recipient, year, and amount instead of grant IDs (Fundação de Desenvolvimento da Pesquisa —
+2015, $245,000; Universidad Nacional de General San Martín — 2015, $240,000; Fundación Espigas — 2015,
+$180,000). The shading section and its rule panel now describe the quantile scale; the grantee limitation
+bullet reflects the official-count approach.
+
+**Deployment note.** The live site is a Lovable project; there is no deploy workflow in the repo. Pushes to
+`main` update the code and Lovable preview, but the published site requires a Publish action in Lovable (or a
+GitHub Pages workflow if fully automatic main→live deploys are wanted). All work here is on `main`.
+
+Tests 29/29; `tsc` and production build pass.

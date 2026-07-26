@@ -22,6 +22,7 @@ export function loadClean(): CleanGrant[] {
     initiativeType: stripHtml(r.initiativeType || ''),
     pastInitiative: r.pastInitiative || '',
     grantee_name: r.grantee_name || '',
+    grantee_sortName: r.grantee_sortName || '',
     projectTitle_clean: r.projectTitle_clean || '',
     projectTitleURL: r.projectTitleURL || '',
     is_partial_year: (r.is_partial_year || '').toLowerCase() === 'true',

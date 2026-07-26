@@ -4,11 +4,39 @@ split; headline totals are full (each grant counted once). Mirrors the frontend.
 
 Usage: python scripts/build_aggregates.py [clean_csv] [map_csv]
 """
-import sys, os, json, datetime
+import sys, os, json, datetime, urllib.request
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from getty_logic import strip_html, is_individual, apply_pst_override, country_count_per_grant
+
+API_STATS_URL = 'https://www.getty.edu/funding/grants-database/api/search?from=0&size=1&q='
+
+
+def fetch_source_stats(existing_path='getty_grants_agg.json'):
+    """Getty's own authoritative headline stats (funding_total, grantees_total),
+    read straight from the grants-database API. Best-effort: on any failure we
+    fall back to whatever was stored in the existing aggregates file, so an
+    offline build never wipes the official numbers."""
+    try:
+        req = urllib.request.Request(API_STATS_URL, headers={
+            'User-Agent': 'Mozilla/5.0 (compatible; grants-research-script/1.0)',
+            'Accept': 'application/json',
+            'Referer': 'https://www.getty.edu/funding/grants-database/search',
+        })
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            stats = (json.load(resp) or {}).get('stats') or {}
+        gt, ft = stats.get('grantees_total'), stats.get('funding_total')
+        if gt is not None and ft is not None:
+            return {'grantees_total': int(gt), 'funding_total': float(ft),
+                    'as_of': datetime.date.today().isoformat()}
+    except Exception as e:
+        print(f"  (source-stats fetch failed, keeping prior: {e})")
+    try:
+        with open(existing_path) as fh:
+            return (json.load(fh) or {}).get('source_stats')
+    except Exception:
+        return None
 
 CLEAN = sys.argv[1] if len(sys.argv) > 1 else 'getty_grants_clean.csv'
 MAP = sys.argv[2] if len(sys.argv) > 2 else 'getty_grants_map.csv'
@@ -59,6 +87,7 @@ def build(clean_path=CLEAN, map_path=MAP):
     return {
         'generated': datetime.date.today().isoformat(),
         'maxYear': int(c['grantAwardYear'].max()),
+        'source_stats': fetch_source_stats(),
         'headline': headline,
         'headlineOrg': headlineOrg,
         'years': years,

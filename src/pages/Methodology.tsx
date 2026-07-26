@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
 import { INDIVIDUAL_INITIATIVES } from '@/lib/grant-types';
-import { HONORIFICS, LEADING_TITLES, SCOPED_INITIATIVES, ORG_KEYWORDS, PST_INITIATIVES, PST_KEEP_ORIGINAL } from '@/lib/classification';
+import { HONORIFICS, LEADING_TITLES, SCOPED_INITIATIVES, ORG_KEYWORDS, PST_INITIATIVES } from '@/lib/classification';
 
 const Section = ({ id, title, children }: { id: string; title: string; children: React.ReactNode }) => (
   <section id={id} className="scroll-mt-20">
@@ -126,9 +126,6 @@ const Methodology = () => (
           <p>Leading title tokens removed first: <Chips items={[...LEADING_TITLES]} /></p>
           <p><Lead>Organization keyword test</Lead> (case-insensitive; if it matches, the grantee is treated as an organization):</p>
           <p><Code>{ORG_KEYWORDS.source}</Code></p>
-          <p className="text-amber-500">
-            <Lead>Changed July 2026 (reviewers, note):</Lead> the old rule "a Central &amp; Eastern European Initiative grant of exactly $5,000 or $10,000 is an individual" was removed — it mislabeled organizations that happened to receive $5k/$10k grants (e.g. "The Fund for Arts and Culture in Central and Eastern Europe"). "Publications" was added to the name-classified list, reclassifying 23 scholar-authored grants from organization to individual; and the organization keyword list was expanded to catch non-English institutions and publishers.
-          </p>
         </RuleDetail>
       </Section>
 
@@ -164,25 +161,33 @@ const Methodology = () => (
           <p><Lead>Even split.</Lead> A country's share of a grant = <Code>amount ÷ N</Code>, where <Code>N</Code> = distinct countries the grant maps to <em>after</em> the PST override. <Code>N</Code> keeps the U.S. even when the Exclude-U.S. toggle is on.</p>
           <p><Lead>PST → Los Angeles.</Lead> Grants in these initiatives collapse to one Los Angeles, USA point:</p>
           <Chips items={[...PST_INITIATIVES]} />
-          <p>Three grant IDs are whitelisted to keep their original overseas locations: <Code>{[...PST_KEEP_ORIGINAL].join(', ')}</Code>. Source: <Code>clean_getty_grants.py</Code>, <Code>src/hooks/use-grant-data.ts</Code>.</p>
+          <p>Three grants are whitelisted to keep their original overseas locations (they genuinely funded work abroad):</p>
+          <RuleList items={[
+            <>Fundação de Desenvolvimento da Pesquisa — 2015, $245,000 (Brazil)</>,
+            <>Universidad Nacional de General San Martín — 2015, $240,000 (Argentina)</>,
+            <>Fundación Espigas — 2015, $180,000 (Argentina)</>,
+          ]} />
+          <p>Source: <Code>clean_getty_grants.py</Code>, <Code>src/hooks/use-grant-data.ts</Code>.</p>
         </RuleDetail>
       </Section>
 
       <Section id="colors" title="How the map is shaded">
         <p>
-          Because the United States receives far more than anywhere else, a plain color scale would make
-          every other country look identical. So the shading uses a compressed (logarithmic) scale, and the
-          U.S. is capped at the level of the next-highest country so it doesn't wash everything else out.
-          Colors run from dim to bright — brighter means more — on the dark map background. Dollar amounts
-          use an amber scale and counts use a blue scale, so you can tell at a glance which measure you're
-          viewing. These choices follow accepted practice for readable, colorblind-considerate maps.
+          Giving is extremely concentrated — the United States, then a steep drop — so a plain scale would
+          make every other country look the same. Instead the map sorts countries into equal-count color
+          classes (a quantile scale): each shade holds the same number of countries, so the largest
+          recipients stand out in the brightest class while smaller recipients stay distinguishable from
+          one another. Colors run dim to bright — brighter means more — on the dark map background, and the
+          classes are recomputed on whatever is shown, so excluding the U.S. re-spreads the scale and the
+          next tier of leaders stands out clearly. Dollar amounts use an amber scale and counts use a blue
+          scale. These choices follow accepted practice for readable, colorblind-considerate maps.
         </p>
         <RuleDetail>
           <RuleList items={[
-            <>Value → color via a <strong>logarithmic</strong> scale across the visible range.</>,
-            <>The U.S. is <strong>capped</strong> at the second-highest country's value for shading only; its true total is unchanged in tooltips and tables.</>,
-            <>Two ramps: <span className="text-amber-500">amber</span> for dollars, <span className="text-blue-400">blue</span> for counts/other; dim → bright on the dark background, interpolated in HCL and verified monotonic in luminance.</>,
-            <>The low end stays distinct from the grey "no-grant" hatch by both hue and luminance.</>,
+            <><strong>Quantile (equal-count) classification</strong> into 6 classes, computed over the countries currently visible — best practice for a heavily right-skewed distribution, since it spreads the long tail across classes instead of collapsing it.</>,
+            <>Excluding the U.S. (or any filter) recomputes the classes, so the remaining leaders re-spread across the full ramp.</>,
+            <>Two ramps: <span className="text-amber-500">amber</span> for dollars, <span className="text-blue-400">blue</span> for counts/other; each runs dim → bright (brighter = more), monotonic in luminance, so the top class pops on the dark background.</>,
+            <>The dimmest class stays a saturated hue, distinct from the grey "no-grant" hatch.</>,
           ]} />
           <p>Source: <Code>src/lib/map-colors.ts</Code>, <Code>src/components/WorldMap.tsx</Code>.</p>
         </RuleDetail>
@@ -246,7 +251,7 @@ const Methodology = () => (
           <li>Dollar amounts default to as-awarded (nominal); use the inflation-adjust toggle to see them in 2025 dollars.</li>
           <li>There is no information on grant outcomes or on the individuals funded.</li>
           <li><strong className="text-foreground/80">Individual vs. organizational is inferred</strong>, never stated by Getty — see the exact rule under "What counts as a grant to an individual" and judge it for yourself.</li>
-          <li>Getty reports 5,354 grantees; we count 5,406 distinct grantee-name strings (name variants and acronyms split apart), so grantee <em>counts</em> are approximate.</li>
+          <li>The headline grantee count is Getty's own official figure from their database; per-country grantee counts are computed here and are approximate, because the same grantee can appear under slightly different name spellings.</li>
           <li>Ten grants have no recoverable amount, and the current year is always incomplete.</li>
         </ul>
       </Section>

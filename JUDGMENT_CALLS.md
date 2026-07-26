@@ -160,12 +160,21 @@ the map placements (one row per country a grant touches). All dollar totals come
 so grants are never accidentally counted twice — with the single, deliberate exception of the
 country-by-country split described above, which divides rather than duplicates.
 
-**The map's shading uses a color scale built for clarity.** Because the United States receives far
-more than anywhere else, a plain scale would make every other country look identical. So the shading
-uses a compressed (logarithmic) scale, and the U.S. is capped at the level of the next-highest country
-so it doesn't wash everything else out. Colors run from dim to bright, with brighter meaning more, on
-the site's dark map background. Dollar amounts use an amber scale; counts and other measures use a blue
-scale, so you can tell at a glance which measure you're looking at.
+**The grantee count comes straight from Getty.** Getty reports a headline number of distinct grantees
+(their database says 5,354) that merges each grantee's name variants under one entity. We can't see those
+entity IDs per grant, so counting distinct grantee names in our own data lands slightly higher (~5,400).
+Rather than approximate, the site reads Getty's official grantee total directly from their API and shows
+that as the headline figure, so it always matches the source. Per-country grantee counts are still
+computed from our data (using the canonical sort-name) and are therefore approximate.
+
+**The map's shading uses equal-count colour classes.** Giving is extremely concentrated (the U.S.,
+then a steep drop), so a plain or even logarithmic scale collapses every other country into one shade.
+Instead we sort countries into six equal-count classes (a quantile scale): each shade holds the same
+number of countries, so the largest recipients occupy the brightest class on their own while smaller
+recipients stay distinguishable. The classes are recomputed over whatever is on the map, so excluding
+the U.S. re-spreads the scale and the next tier of leaders stands out. Colours run dim to bright
+(brighter = more) on the dark map background; dollar amounts use an amber ramp and counts/other measures
+a blue ramp, both colour-vision-safe and monotonic in luminance.
 
 **Some program names contain hidden formatting.** A few of Getty's program names include leftover web
 formatting (for instance, italics markup around part of the name). We remove that so names read cleanly
