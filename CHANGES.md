@@ -64,3 +64,61 @@ the tiny `getty_grants_agg.json` gives instant first paint and the full CSVs loa
 - **M4 (Insight strip):** excluded by the owner.
 - **M7 parts 3 & 4 (filtered-CSV download, map-PNG export):** excluded by the owner. Parts 1–2 (URL state + Copy link) done.
 - **M8 country-CSV download:** omitted for consistency with the M7 export exclusion (grantee tab + external links done). Trivial to add later if wanted.
+
+---
+
+## Data reconciliation & monthly amount auto-refresh (2026-07-26)
+
+**What changed.** Added an amount-refresh step to `update_getty_grants.py`, and ran a
+one-time reconciliation that corrected 14 stale grant amounts. Our headline total now
+equals Getty's live figure exactly: **$580,967,468** (was $580,893,794).
+
+**Why — the drift.** Our stored "Awarded" total was **$73,674 lower** than Getty's own
+grants database. The grant *set* was identical (9,971 IDs, none added or removed), so the
+gap was entirely down to **amounts**: 14 grants whose value Getty had revised after we first
+pulled them. Root cause is a design choice in the monthly updater — it only fetched full
+records for **brand-new** grant IDs and never re-read grants already in our database (the
+"we don't overwrite our own corrections" rule). So any amount Getty revised on an existing
+grant never reached us.
+
+**Timing that confirms it.** Getty last updated their database **2026-05-12** (index
+`gettygrants_2026-05-12`); we last pulled **2026-06-05** (automated job) with a manual
+edit **2026-06-24**. Our June pull ran *after* Getty's May revision, so we *could* have
+caught these — but because the 14 grants were already in our DB, the new-IDs-only logic
+skipped them. The 2026-07-05 job found no genuinely new grants and committed nothing,
+leaving the 14 stale.
+
+**The 14 grants, two flavours:**
+- **10 foreign-currency re-valuations** (€, ₹) — e.g. a €735,000 fellowship (`202568912`)
+  moved from $841,060 to $866,124 as Getty updated its exchange conversion.
+- **4 USD corrections** — recent internships Getty adjusted down, e.g. `202565937`
+  $49,000 → $35,030, `202566293` $49,000 → $36,892, `202463185` $51,450 → $42,550,
+  `202672350` $54,000 → $48,750.
+
+**The fix (code).** `update_getty_grants.py`:
+- The API sweep now also captures each grant's current `amountUSD` + currency string
+  (no extra requests — same pages already fetched to list IDs).
+- New `refresh_amounts()` updates `amountAwarded_USD` and the original-currency string for
+  any existing grant whose amount Getty has revised. It **only touches grants still present
+  in Getty's API** (never re-adds a pruned or hand-removed grant) and **only changes the two
+  amount fields** — every other column is left as-is.
+- The updater no longer early-returns when the ID set is unchanged; it runs the refresh
+  first, and only reports "already up to date" when IDs *and* amounts both match. Every
+  refreshed grant and the net dollar delta are printed; row-count validation is unaffected
+  (refresh never changes row counts).
+- Result: going forward the monthly job keeps our amounts matched to Getty automatically.
+  (This deliberately relaxes the old "never touch existing records" rule for the amount
+  field only. There are currently no hand-corrected amounts to protect; the one manual edit
+  on record — the 2026-06-24 deletion of 17 grants Getty had also dropped — is a row removal,
+  not an amount edit, and the refresh cannot resurrect it.)
+
+**Files rebuilt.** `getty_grants_clean.csv`, `getty_grants_map.csv`, `getty_grants_agg.json`
+(+ `public/` copies). Regenerated `scripts/baselines.json`, which was itself stale from the
+2026-06-24 manual deletion — its informational fields corrected alongside the new totals
+(`multi_country_grants` 571→569, `us_grants` 8487→8488; the amount refresh changed **zero**
+locations, verified: map grant/country pairs are identical before and after). All 27 vitest
+tests pass.
+
+**Known item, not changed here.** Getty reports **5,354 grantees**; we count **5,406**
+distinct grantee-name strings. This is a name-vs-entity counting difference (name variants,
+acronyms), not a data error — logged for a future reconciliation if wanted.

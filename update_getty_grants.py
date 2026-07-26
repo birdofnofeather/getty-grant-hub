@@ -3,7 +3,8 @@ Getty Foundation Grants — Incremental Update Script
 ====================================================
 Monthly updater. Sweeps all grantIds from the API, finds new ones,
 fetches only those full records, cleans them, appends to both CSVs,
-and prints a full validation report.
+refreshes the amounts of existing grants Getty has revised, and prints a
+full validation report.
 
 Usage:
     python update_getty_grants.py [clean_csv] [map_csv]
@@ -45,10 +46,12 @@ def fetch_page(from_: int, size: int) -> dict:
     return resp.json()
 
 
-def sweep_all_ids() -> tuple[set, int]:
+def sweep_all_ids() -> tuple[set, int, dict]:
     """
     Fetch every grantId from the API using large pages.
-    Returns (set of all IDs, total reported by API).
+    Returns (set of all IDs, total reported by API, amounts-by-id).
+    amounts-by-id maps grantId -> {"usd": float|None, "currency": str} and lets
+    us refresh the stored amount of any grant Getty has revised since we pulled it.
     This is order-independent — safe regardless of how Getty sorts their data.
     """
     print("  Sweeping API for all current grantIds...")
@@ -57,6 +60,7 @@ def sweep_all_ids() -> tuple[set, int]:
     print(f"  API reports {total:,} total records.")
 
     all_ids = set()
+    amounts = {}
     from_ = 0
     while from_ < total:
         data  = fetch_page(from_, SWEEP_SIZE)
@@ -67,6 +71,8 @@ def sweep_all_ids() -> tuple[set, int]:
             gid = str(g.get("grantId", "")).strip()
             if gid:
                 all_ids.add(gid)
+                amt = g.get("amountAwarded") or {}
+                amounts[gid] = {"usd": amt.get("amountUSD"), "currency": amt.get("currency", "")}
             # Schema check on first record of first page
             if from_ == 0 and g is batch[0]:
                 missing = EXPECTED_FIELDS - set(g.keys())
@@ -78,7 +84,7 @@ def sweep_all_ids() -> tuple[set, int]:
         time.sleep(PAUSE)
 
     print(f"\n  Collected {len(all_ids):,} unique grantIds from API.")
-    return all_ids, total
+    return all_ids, total, amounts
 
 
 def fetch_records_for_ids(target_ids: set, api_total: int) -> list:
@@ -209,6 +215,42 @@ def validate_update(df_before: pd.DataFrame, df_after: pd.DataFrame,
     return ok
 
 
+def refresh_amounts(df: pd.DataFrame, api_amounts: dict):
+    """
+    Update amountAwarded_USD (and the original-currency string) for grants already
+    in our database whose amount Getty has revised since we stored them — e.g. a
+    foreign-currency grant re-valued at a new exchange rate, or an award Getty
+    corrected after the fact.
+
+    Only grants present in api_amounts (i.e. still in Getty's database) are touched;
+    this never re-adds a grant that was pruned or hand-removed. Only the amount
+    fields change — every other column is left exactly as-is.
+
+    Returns (df, changes, net_delta_usd) where changes is a list of
+    (grantId, old_usd, new_usd, old_currency, new_currency).
+    """
+    changes = []
+    net = 0.0
+    for i in df.index:
+        gid = str(df.at[i, "grantId"]).strip()
+        info = api_amounts.get(gid)
+        if not info or info.get("usd") is None:
+            continue
+        new_usd = float(info["usd"])
+        try:
+            old_usd = float(df.at[i, "amountAwarded_USD"])
+        except (ValueError, TypeError):
+            old_usd = 0.0
+        if abs(new_usd - old_usd) > 0.5:
+            old_cur = df.at[i, "amountAwarded_currency"]
+            new_cur = info.get("currency") or old_cur
+            df.at[i, "amountAwarded_USD"] = new_usd
+            df.at[i, "amountAwarded_currency"] = new_cur
+            changes.append((gid, old_usd, new_usd, old_cur, new_cur))
+            net += (new_usd - old_usd)
+    return df, changes, net
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
@@ -240,7 +282,7 @@ def main():
     # ── Step 3: Sweep all IDs ──
     print("\n[3/6] Sweeping API for all grantIds...")
     try:
-        api_ids, api_total = sweep_all_ids()
+        api_ids, api_total, api_amounts = sweep_all_ids()
     except Exception as e:
         print(f"  FATAL: Could not reach Getty API: {e}")
         raise SystemExit(1)
@@ -257,9 +299,10 @@ def main():
         print(f"  This looks like an API anomaly. Aborting without changes.")
         raise SystemExit(1)
 
-    if not new_ids and not removed_ids:
-        print("\nDatabase is already up to date. No changes made.")
-        return
+    # NOTE: we no longer early-return when the ID set is unchanged. Getty may have
+    # revised the *amount* of an existing grant (exchange-rate re-valuation or a
+    # correction), which refresh_amounts (below) catches. The genuine "nothing to
+    # do" exit now lives after that refresh.
 
     # ── Step 4: Fetch full records for new IDs only ──
     if new_ids:
@@ -299,6 +342,20 @@ def main():
     # Re-flag partial year across entire combined dataset
     current_year = datetime.date.today().year
     df_combined['is_partial_year'] = df_combined['grantAwardYear'] == current_year
+
+    # ── Refresh amounts for existing grants Getty has revised ──
+    print("\n  Refreshing amounts to match Getty's current USD figures...")
+    df_combined, amount_changes, net_delta = refresh_amounts(df_combined, api_amounts)
+    if amount_changes:
+        print(f"  Refreshed {len(amount_changes)} grant amount(s); net change {net_delta:+,.2f} USD:")
+        for gid, old, new, oldcur, newcur in amount_changes:
+            print(f"    {gid}: {old:,.0f} -> {new:,.0f}  ({oldcur} -> {newcur})")
+    else:
+        print("  No amount revisions found — stored amounts already match Getty.")
+
+    if not new_ids and not removed_ids and not amount_changes:
+        print("\nDatabase is already up to date (IDs and amounts match Getty). No changes made.")
+        return
 
     # ── Step 6: Validate before saving ──
     print("\n[6/6] Validating...")

@@ -6,7 +6,7 @@ site. It is meant to be readable by anyone — you do not need to know the data 
 code. If a number on the site ever looks surprising, the reason is almost certainly
 explained here.
 
-*Last updated: July 2026.*
+*Last updated: 26 July 2026.*
 
 ---
 
@@ -18,9 +18,14 @@ adds only what is new, removes any grant Getty has taken down, runs a series of 
 checks, and publishes the update only if everything passes. If anything looks wrong, it
 stops and emails us instead of publishing bad data.
 
-**We don't overwrite our own corrections.** Once a grant is in our data, the monthly
-update won't quietly change it. This protects any hand-checked fixes from being undone by
-a stale value upstream.
+**We keep amounts matched to Getty, and protect our own corrections.** Each month we refresh
+the dollar amount of every grant to match Getty's current figure. This catches grants Getty
+re-values (for example, a euro- or rupee-denominated grant recalculated at a new exchange rate)
+or corrects after the fact. Every *other* detail of a grant we've already recorded is left
+untouched, so hand-checked fixes to any field besides the amount are preserved. *(Why this
+exists: before July 2026 the monthly update never re-read an existing grant at all. That was
+meant to protect our corrections, but it also let 14 grants drift $73,674 below Getty's own
+published total before we reconciled them and added the automatic amount refresh.)*
 
 **Grants Getty removes, we remove too — but with a brake.** If Getty deletes grants from
 their database, we mirror that. As a safeguard, if an update would delete more than a small
@@ -71,7 +76,8 @@ exhibitions *about* Latin American art, and Getty's records list those subject c
 Brazil, and others) as the grants' locations. But the exhibitions themselves took place in Los
 Angeles, so we map these grants to LA rather than scattering them across Latin America.
 **★ Three grants are exceptions (added April 2026):** three PST grants really did fund work abroad,
-so they keep their original locations.
+so they keep their original locations. The later **"PST ART: Art & Science Collide"** initiative is
+handled the same way, and for the same reason.
 
 **The four parts of the United Kingdom are combined.** Getty's records sometimes say "England,"
 "Scotland," "Wales," or "Northern Ireland." Since the map colors whole countries, we combine these
@@ -107,6 +113,25 @@ unmarked as other. When we switched to this automatic method it reproduced the o
 and additionally caught one newly added program the manual list had missed.
 
 ---
+
+## Optional toggles that change the dollars
+
+**Adjusting for inflation.** The "Adjust dollars for inflation" toggle restates every grant in
+2025 dollars using the U.S. Bureau of Labor Statistics' Consumer Price Index (CPI-U, annual
+averages). A grant awarded in year Y is multiplied by CPI(2025) / CPI(Y) — so a $100,000 grant
+from 1990 shows as roughly $246,000 in today's dollars. 2025 is the most recent complete annual
+CPI release; grants from the current, still-open year are treated as already in reference-year
+dollars (a factor of 1), which slightly understates their real value, and each chart says so.
+When the toggle is on, headline totals, country totals, and every dollar chart use adjusted
+amounts; grant *counts* and the grant-size distribution stay nominal.
+
+**Excluding the United States.** The "Exclude U.S. grants" toggle removes the U.S. from the map
+and subtracts only the U.S. *share* of each grant from the totals — consistent with the even
+split described above. A grant that funds work only in the U.S. is dropped entirely; a
+cross-border grant that includes the U.S. stays on the map for its other countries and
+contributes its non-U.S. share to the totals (for example, a $290,250 grant serving five
+countries including the U.S. keeps $232,200 — four fifths). Grants that never touch the U.S.
+are unaffected.
 
 ## How the numbers and colors are shown
 

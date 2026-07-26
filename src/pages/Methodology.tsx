@@ -29,8 +29,10 @@ const Methodology = () => (
       <Section id="source" title="Data source & updates">
         <p>
           Every grant comes from the Getty Foundation's own public grants database. On the 5th of each
-          month an automated job checks for new grants, adds only what is new, and removes any grant Getty
-          has taken down. It runs a series of safety checks and publishes only if they all pass — if
+          month an automated job checks for new grants, adds only what is new, removes any grant Getty
+          has taken down, and refreshes the dollar amount of existing grants to match Getty's current
+          figures (for instance when a grant awarded in another currency is re-valued at a new exchange
+          rate). It runs a series of safety checks and publishes only if they all pass — if
           anything looks wrong, it stops rather than publish bad data. The most recent calendar year is
           always marked "partial," because it is still in progress.
         </p>
