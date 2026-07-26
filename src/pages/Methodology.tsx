@@ -116,7 +116,7 @@ const Methodology = () => (
           <p>A grant is tagged <Lead>individual</Lead> if <em>any</em> signal below fires (otherwise organizational). Logic lives in <Code>src/lib/classification.ts</Code>, mirrored in <Code>scripts/getty_logic.py</Code>. Classification is inferred by us — Getty never states it.</p>
           <p><Lead>1 · Initiative only ever funds individuals</Lead> — one of:</p>
           <Chips items={[...INDIVIDUAL_INITIATIVES]} />
-          <p><Lead>2 · Small Summer Institutes grant</Lead> — initiative <Code>Summer Institutes</Code> with amount under <Code>$5,000</Code>.</p>
+          <p><Lead>2 · Small Summer Institutes grant</Lead> — initiative <Code>Summer Institutes</Code> with amount under <Code>$5,000</Code>. In this program the small awards (about $750–$1,900) are participant stipends paid to individual scholars, while the larger grant that runs the institute goes to the host organization, so the $5,000 line cleanly separates the two.</p>
           <p><Lead>3 · Name begins with an honorific</Lead> (leading spaces ignored) — one of:</p>
           <Chips items={HONORIFICS.map((h) => JSON.stringify(h))} />
           <p>The trailing spaces on <Code>"Professor "</Code> and <Code>"Miss "</Code> are deliberate, so "Mississippi University for Women" is never misread as "Miss." A regression test guards this.</p>
