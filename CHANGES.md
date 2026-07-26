@@ -200,3 +200,12 @@ bullet reflects the official-count approach.
 GitHub Pages workflow if fully automatic main→live deploys are wanted). All work here is on `main`.
 
 Tests 29/29; `tsc` and production build pass.
+
+---
+
+## Update cadence: monthly -> weekly (2026-07-26)
+
+Changed the automated update job from monthly (5th, `0 9 5 * *`) to **weekly** (Mondays, `0 9 * * 1`).
+No cost impact (GitHub Actions is free on public repos; the run is a short ID sweep plus only the
+occasional new-record fetch). Wording updated in the workflow, `update_getty_grants.py`, the methodology
+page, and `JUDGMENT_CALLS.md`.

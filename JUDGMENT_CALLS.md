@@ -12,8 +12,8 @@ explained here.
 
 ## Where the data comes from and how it stays current
 
-**One trustworthy source, refreshed every month.** Every grant comes from Getty's own
-public grants database. On the 5th of each month an automated job checks for new grants,
+**One trustworthy source, refreshed every week.** Every grant comes from Getty's own
+public grants database. Each week an automated job checks for new grants,
 adds only what is new, removes any grant Getty has taken down, runs a series of safety
 checks, and publishes the update only if everything passes. If anything looks wrong, it
 stops and emails us instead of publishing bad data.

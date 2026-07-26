@@ -1,7 +1,7 @@
 """
 Getty Foundation Grants — Incremental Update Script
 ====================================================
-Monthly updater. Sweeps all grantIds from the API, finds new ones,
+Weekly updater. Sweeps all grantIds from the API, finds new ones,
 fetches only those full records, cleans them, appends to both CSVs,
 refreshes the amounts of existing grants Getty has revised, and prints a
 full validation report.

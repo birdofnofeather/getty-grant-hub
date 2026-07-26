@@ -1,14 +1,14 @@
 # .github/workflows/update_getty_grants.yml
 #
-# Runs on the 5th of every month at 9 AM UTC.
+# Runs every Monday at 9 AM UTC.
 # On failure, GitHub will email the repo owner automatically.
 # You can also trigger it manually from the Actions tab at any time.
 
-name: Monthly Getty Grants Update
+name: Weekly Getty Grants Update
 
 on:
   schedule:
-    - cron: '0 9 5 * *'
+    - cron: '0 9 * * 1'
   workflow_dispatch:
 
 jobs:
@@ -53,7 +53,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add getty_grants_clean.csv getty_grants_map.csv getty_grants_agg.json \
                   public/getty_grants_clean.csv public/getty_grants_map.csv public/getty_grants_agg.json
-          git commit -m "data: monthly Getty grants update $(date +'%Y-%m-%d')"
+          git commit -m "data: weekly Getty grants update $(date +'%Y-%m-%d')"
           git push
 
       - name: Report no new data

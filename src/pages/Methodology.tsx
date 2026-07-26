@@ -67,8 +67,8 @@ const Methodology = () => (
 
       <Section id="source" title="Data source & updates">
         <p>
-          Every grant comes from the Getty Foundation's own public grants database. On the 5th of each
-          month an automated job checks for new grants, adds only what is new, removes any grant Getty
+          Every grant comes from the Getty Foundation's own public grants database. Each week an
+          automated job checks for new grants, adds only what is new, removes any grant Getty
           has taken down, and refreshes the dollar amount of existing grants to match Getty's current
           figures (for instance when a grant awarded in another currency is re-valued at a new exchange
           rate). It runs a series of safety checks and publishes only if they all pass — if
@@ -81,7 +81,7 @@ const Methodology = () => (
           total and show a dash ("—").
         </p>
         <RuleDetail>
-          <p><Lead>Schedule.</Lead> GitHub Actions, cron <Code>0 9 5 * *</Code> (5th of each month, 09:00 UTC); also runnable on demand.</p>
+          <p><Lead>Schedule.</Lead> GitHub Actions, cron <Code>0 9 * * 1</Code> (every Monday, 09:00 UTC); also runnable on demand.</p>
           <p><Lead>Each run.</Lead></p>
           <RuleList items={[
             <>Sweep every <Code>grantId</Code> from Getty's grants-database search API.</>,
