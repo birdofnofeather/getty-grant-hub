@@ -160,12 +160,15 @@ the map placements (one row per country a grant touches). All dollar totals come
 so grants are never accidentally counted twice — with the single, deliberate exception of the
 country-by-country split described above, which divides rather than duplicates.
 
-**The grantee count comes straight from Getty.** Getty reports a headline number of distinct grantees
-(their database says 5,354) that merges each grantee's name variants under one entity. We can't see those
-entity IDs per grant, so counting distinct grantee names in our own data lands slightly higher (~5,400).
-Rather than approximate, the site reads Getty's official grantee total directly from their API and shows
-that as the headline figure, so it always matches the source. Per-country grantee counts are still
-computed from our data (using the canonical sort-name) and are therefore approximate.
+**The grantee count comes straight from Getty.** Getty publishes a headline of 5,354 distinct grantees.
+This number cannot be reproduced from grant-level records — not even from Getty's own: deduplicating the
+grantee names in their API by name or by sort-name yields ~5,401, the same as ours (our sort-name count
+matches theirs to the record). Getty's 5,354 comes from an internal grantee registry — a per-entity ID
+that is not exposed in the grants feed — so no amount of studying the grants can recover it, and fuzzy
+name-merging would only guess (most similar names are genuinely different people). Rather than approximate,
+the site reads Getty's official grantee total directly from their API and shows that as the headline, so it
+always matches the source — exactly as Getty's own site does. Per-country grantee tallies are computed from
+the grant records (by canonical sort-name) and are approximate in the same way Getty's own grant-level data is.
 
 **The map's shading uses equal-count colour classes.** Giving is extremely concentrated (the U.S.,
 then a steep drop), so a plain or even logarithmic scale collapses every other country into one shade.
