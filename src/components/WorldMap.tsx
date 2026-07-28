@@ -125,10 +125,12 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
 
   const legendRange = useMemo(() => {
     if (metric === 'none' || !colorScale) return null;
-    const allValues = Array.from(countryAgg.values()).map((a) => getMetricValue(a, metric)).filter((v) => v > 0);
+    const allValues = Array.from(countryAgg.values()).map((a) => getMetricValue(a, metric)).filter((v) => v > 0).sort((a, b) => a - b);
     if (allValues.length === 0) return null;
     const fmt = metric === 'totalUSD' ? formatUSD : formatNum;
-    return { ramp: colorScale.ramp, minLabel: fmt(Math.round(Math.min(...allValues))), maxLabel: fmt(Math.round(Math.max(...allValues))) };
+    // Legend max reflects the scale's cap (2nd-highest) so the ramp labels match the visible gradient.
+    const capMax = allValues.length >= 2 ? allValues[allValues.length - 2] : allValues[0];
+    return { ramp: colorScale.ramp, minLabel: fmt(Math.round(allValues[0])), maxLabel: fmt(Math.round(capMax)) + (allValues.length >= 2 ? '+' : '') };
   }, [countryAgg, metric, colorScale]);
 
 
@@ -210,7 +212,7 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
             <span className="text-[10px] text-white/60">{legendRange.minLabel}</span>
             <span className="text-[10px] text-white/60">{legendRange.maxLabel}</span>
           </div>
-          <div className="text-[9px] text-white/40 mt-1">Equal-count classes; darker = more</div>
+          <div className="text-[9px] text-white/40 mt-1">Log scale, capped at 2nd-highest; darker = more</div>
         </div>
       )}
 
