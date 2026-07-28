@@ -31,11 +31,19 @@ describe('choropleth colour scale', () => {
     expect(relLum(s.color(5000))).toBeLessThan(relLum(s.color(1)));
   });
 
-  it('equal-count quantile: top value lands in the darkest class, bottom in the lightest', () => {
-    const vals = [1, 1, 2, 2, 3, 3, 90, 90, 5000, 5000];
+  it('top outlier is capped at darkest; runner-up also lands in the darkest class', () => {
+    const vals = [1, 1, 2, 2, 3, 3, 90, 90, 5000];
     const s = makeColorScale(vals, 'totalUSD');
     expect(s.color(5000)).toBe(s.ramp[s.ramp.length - 1]);
+    expect(s.color(90)).toBe(s.ramp[s.ramp.length - 1]);
     expect(s.color(1)).toBe(s.ramp[0]);
+  });
+
+  it('removing the top outlier re-anchors the scale so mid values darken', () => {
+    const withUS = makeColorScale([1, 10, 100, 1000, 50000], 'totalUSD');
+    const withoutUS = makeColorScale([1, 10, 100, 1000], 'totalUSD');
+    const rampIdx = (c: string, s: ReturnType<typeof makeColorScale>) => s.ramp.indexOf(c);
+    expect(rampIdx(withoutUS.color(100), withoutUS)).toBeGreaterThan(rampIdx(withUS.color(100), withUS));
   });
 
   it('a country with no value renders at the dimmest class, not blank', () => {
