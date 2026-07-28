@@ -210,7 +210,7 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
             <span className="text-[10px] text-white/60">{legendRange.minLabel}</span>
             <span className="text-[10px] text-white/60">{legendRange.maxLabel}</span>
           </div>
-          <div className="text-[9px] text-white/40 mt-1">Equal-count classes; brighter = more</div>
+          <div className="text-[9px] text-white/40 mt-1">Equal-count classes; darker = more</div>
         </div>
       )}
 

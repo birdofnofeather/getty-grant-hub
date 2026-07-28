@@ -1,21 +1,21 @@
 // Choropleth colour logic, extracted so it can be unit-tested.
 //
-// Sequential ramps run DIM -> BRIGHT (brighter = more) so the biggest recipients
-// pop against the dark map background, while the lowest class stays a clearly
-// saturated hue — distinct from the grey "no-grant" hatch. Two colour-vision-safe
-// families only: amber = dollar measures, blue = counts and other measures.
+// Sequential ramps run LIGHT -> DARK (darker = more) so the biggest recipients
+// read as heavy/dense against the dark map background, while the lowest values
+// stay pale. Two colour-vision-safe families only: amber = dollar measures,
+// blue = counts and other measures.
 import { scaleQuantile } from 'd3-scale';
 import { interpolateHcl } from 'd3-interpolate';
 import type { ChoroplethMetric } from '@/lib/grant-types';
 
-const RAMP_AMBER = ['#8a5a00', '#b0730a', '#d18f1e', '#eeab3a', '#ffc960', '#ffe49c'];
-const RAMP_BLUE  = ['#274b7d', '#2f63a8', '#3b82d6', '#4f9bf0', '#7db8fb', '#b3d6ff'];
+const RAMP_AMBER = ['#ffe49c', '#ffc960', '#eeab3a', '#d18f1e', '#b0730a', '#8a5a00'];
+const RAMP_BLUE  = ['#b3d6ff', '#7db8fb', '#4f9bf0', '#3b82d6', '#2f63a8', '#274b7d'];
 
 export function getRamp(metric: ChoroplethMetric): string[] {
   return metric === 'totalUSD' ? RAMP_AMBER : RAMP_BLUE;
 }
 
-// [dimmest, brightest] convenience for anything that wants the two endpoints.
+// [lightest, darkest] convenience for anything that wants the two endpoints.
 export function getColorRange(metric: ChoroplethMetric): [string, string] {
   const r = getRamp(metric);
   return [r[0], r[r.length - 1]];
@@ -32,7 +32,7 @@ export interface ColorScale {
 // so a continuous scale collapses the long tail into a single shade. Equal-count
 // classes instead give every class the same number of countries: mid and low
 // recipients stay distinguishable, and the very top recipients occupy the
-// brightest class on their own. Because the scale recomputes over whatever values
+// darkest class on their own. Because the scale recomputes over whatever values
 // are passed in, excluding the U.S. re-spreads the whole scale and the new leaders
 // jump out — exactly the "more dramatic" behaviour we want there.
 export function makeColorScale(values: number[], metric: ChoroplethMetric): ColorScale {

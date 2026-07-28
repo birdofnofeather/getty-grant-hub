@@ -176,8 +176,8 @@ const Methodology = () => (
           Giving is extremely concentrated — the United States, then a steep drop — so a plain scale would
           make every other country look the same. Instead the map sorts countries into equal-count color
           classes (a quantile scale): each shade holds the same number of countries, so the largest
-          recipients stand out in the brightest class while smaller recipients stay distinguishable from
-          one another. Colors run dim to bright — brighter means more — on the dark map background, and the
+          recipients stand out in the darkest class while smaller recipients stay distinguishable from
+          one another. Colors run light to dark — darker means more — on the dark map background, and the
           classes are recomputed on whatever is shown, so excluding the U.S. re-spreads the scale and the
           next tier of leaders stands out clearly. Dollar amounts use an amber scale and counts use a blue
           scale. These choices follow accepted practice for readable, colorblind-considerate maps.
@@ -186,7 +186,7 @@ const Methodology = () => (
           <RuleList items={[
             <><strong>Quantile (equal-count) classification</strong> into 6 classes, computed over the countries currently visible — best practice for a heavily right-skewed distribution, since it spreads the long tail across classes instead of collapsing it.</>,
             <>Excluding the U.S. (or any filter) recomputes the classes, so the remaining leaders re-spread across the full ramp.</>,
-            <>Two ramps: <span className="text-amber-500">amber</span> for dollars, <span className="text-blue-400">blue</span> for counts/other; each runs dim → bright (brighter = more), monotonic in luminance, so the top class pops on the dark background.</>,
+            <>Two ramps: <span className="text-amber-500">amber</span> for dollars, <span className="text-blue-400">blue</span> for counts/other; each runs light → dark (darker = more), monotonic in luminance, so the top class pops on the dark background.</>,
             <>The dimmest class stays a saturated hue, distinct from the grey "no-grant" hatch.</>,
           ]} />
           <p>Source: <Code>src/lib/map-colors.ts</Code>, <Code>src/components/WorldMap.tsx</Code>.</p>

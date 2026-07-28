@@ -18,20 +18,20 @@ describe('choropleth colour scale', () => {
     expect(getRamp('totalUSD')).not.toEqual(getRamp('grantCount'));
   });
 
-  it('ramps run dim -> bright (monotonically increasing luminance)', () => {
+  it('ramps run light -> dark (monotonically decreasing luminance)', () => {
     for (const metric of ['totalUSD', 'grantCount'] as const) {
       const lums = getRamp(metric).map(relLum);
-      for (let i = 1; i < lums.length; i++) expect(lums[i]).toBeGreaterThan(lums[i - 1]);
+      for (let i = 1; i < lums.length; i++) expect(lums[i]).toBeLessThan(lums[i - 1]);
     }
   });
 
-  it('brighter = more: the largest value is brighter than the smallest', () => {
+  it('darker = more: the largest value is darker than the smallest', () => {
     const vals = [1, 2, 3, 5, 8, 13, 40, 120, 900, 5000];
     const s = makeColorScale(vals, 'grantCount');
-    expect(relLum(s.color(5000))).toBeGreaterThan(relLum(s.color(1)));
+    expect(relLum(s.color(5000))).toBeLessThan(relLum(s.color(1)));
   });
 
-  it('equal-count quantile: top value lands in the brightest class, bottom in the dimmest', () => {
+  it('equal-count quantile: top value lands in the darkest class, bottom in the lightest', () => {
     const vals = [1, 1, 2, 2, 3, 3, 90, 90, 5000, 5000];
     const s = makeColorScale(vals, 'totalUSD');
     expect(s.color(5000)).toBe(s.ramp[s.ramp.length - 1]);
