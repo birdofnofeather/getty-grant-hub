@@ -209,3 +209,31 @@ Changed the automated update job from monthly (5th, `0 9 5 * *`) to **weekly** (
 No cost impact (GitHub Actions is free on public repos; the run is a short ID sweep plus only the
 occasional new-record fetch). Wording updated in the workflow, `update_getty_grants.py`, the methodology
 page, and `JUDGMENT_CALLS.md`.
+
+---
+
+## Choropleth colour scale + map behaviour rolled back to July 23 (2026-07-28)
+
+**What changed.** Reverted the 2026-07-26 quantile (equal-count, 6-class) choropleth scale back to the
+**July 23 continuous logarithmic scale**. This restores the earlier map behaviour: color deepens with the
+log of each country's value over a continuous ramp (no discrete class breaks), the scale re-anchors to the
+min→max of the currently-visible countries (so excluding the U.S. still re-spreads the remaining leaders),
+and the legend is a continuous gradient bar labelled "Log scale; darker = more". Ramps run **light → dark
+(darker = more)**; amber = dollars, blue = counts/other; HCL interpolation retained. The earlier
+"cap the U.S. at the 2nd-highest value" hack is **not** reinstated — the plain log range spans the full
+min→max.
+
+**Where the rollback came from.** The revert was made in Lovable (merge commit `a2d2b7c`, "Reverted color
+scale to July 23"), which commits straight to `main` in this same GitHub repo — so Lovable's edits and this
+change log live in one place; there is no separate change tracker. The code change touched
+`src/lib/map-colors.ts`, `src/components/WorldMap.tsx`, and `src/lib/__tests__/map-colors.test.ts`.
+
+**Docs re-synced to match.** The Lovable revert changed the code but not the written docs, which still
+described the quantile scale. Re-synced so they reflect the current (reverted) behaviour:
+- `src/pages/Methodology.tsx` — "How the map is shaded" prose and the "Show the exact rule" panel now
+  describe the continuous log scale (removed quantile / equal-count / 6-class / discrete-class wording).
+- `JUDGMENT_CALLS.md` — map-shading paragraph rewritten to the log scale; also corrected its direction,
+  which had drifted to "dim → bright (brighter = more)" — the actual scale is light → dark (darker = more).
+
+Per the owner's instruction, the Methodology page and JUDGMENT_CALLS.md document only the current state
+(no "changed"/"reverted" notes on those surfaces); this changelog is the sole record of the rollback.

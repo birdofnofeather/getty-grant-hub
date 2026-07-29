@@ -170,14 +170,14 @@ the site reads Getty's official grantee total directly from their API and shows 
 always matches the source — exactly as Getty's own site does. Per-country grantee tallies are computed from
 the grant records (by canonical sort-name) and are approximate in the same way Getty's own grant-level data is.
 
-**The map's shading uses equal-count colour classes.** Giving is extremely concentrated (the U.S.,
-then a steep drop), so a plain or even logarithmic scale collapses every other country into one shade.
-Instead we sort countries into six equal-count classes (a quantile scale): each shade holds the same
-number of countries, so the largest recipients occupy the brightest class on their own while smaller
-recipients stay distinguishable. The classes are recomputed over whatever is on the map, so excluding
-the U.S. re-spreads the scale and the next tier of leaders stands out. Colours run dim to bright
-(brighter = more) on the dark map background; dollar amounts use an amber ramp and counts/other measures
-a blue ramp, both colour-vision-safe and monotonic in luminance.
+**The map's shading uses a continuous logarithmic colour scale.** Giving is extremely concentrated
+(the U.S., then a steep drop), so a plain linear scale collapses every other country into one shade.
+Instead we shade by the log of each country's value: the log transform spreads the long tail so smaller
+recipients stay distinguishable while the largest still read as the deepest. The scale is re-anchored
+over whatever is on the map — its light and dark ends track the smallest and largest visible values —
+so excluding the U.S. re-spreads the scale and the next tier of leaders stands out. Colours run light
+to dark (darker = more) on the dark map background; dollar amounts use an amber ramp and counts/other
+measures a blue ramp, both colour-vision-safe and interpolated in HCL.
 
 **Some program names contain hidden formatting.** A few of Getty's program names include leftover web
 formatting (for instance, italics markup around part of the name). We remove that so names read cleanly
