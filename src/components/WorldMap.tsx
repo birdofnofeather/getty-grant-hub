@@ -128,9 +128,7 @@ export default function WorldMap({ countryAgg, metric, onCountryClick }: WorldMa
     const allValues = Array.from(countryAgg.values()).map((a) => getMetricValue(a, metric)).filter((v) => v > 0).sort((a, b) => a - b);
     if (allValues.length === 0) return null;
     const fmt = metric === 'totalUSD' ? formatUSD : formatNum;
-    // Legend max reflects the scale's cap (2nd-highest) so the ramp labels match the visible gradient.
-    const capMax = allValues.length >= 2 ? allValues[allValues.length - 2] : allValues[0];
-    return { ramp: colorScale.ramp, minLabel: fmt(Math.round(allValues[0])), maxLabel: fmt(Math.round(capMax)) + (allValues.length >= 2 ? '+' : '') };
+    return { ramp: colorScale.ramp, minLabel: fmt(Math.round(allValues[0])), maxLabel: fmt(Math.round(allValues[allValues.length - 1])) };
   }, [countryAgg, metric, colorScale]);
 
 
