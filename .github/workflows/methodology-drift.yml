@@ -1,0 +1,103 @@
+# Methodology drift guard
+# ------------------------
+# Every push to main, this checks whether any file that DEFINES documented
+# behaviour changed without the docs being touched in the same push. If so it
+# opens (or updates) a GitHub issue asking for a methodology review.
+#
+# It can only catch STRUCTURAL drift (logic changed, docs untouched) — it does
+# not read the prose to confirm accuracy. Treat the issue as "go glance at the
+# docs", not proof that anything is wrong.
+#
+# To tune coverage, edit GOVERNED_PATHS below (one grep -E regex per line, '|'
+# separated). DOC_PATHS are the docs that, if touched, clear the check.
+
+name: Methodology drift guard
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect drift
+        id: drift
+        run: |
+          # --- Files whose change should prompt a methodology review ---
+          GOVERNED='^(src/lib/classification\.ts|src/lib/map-colors\.ts|src/lib/dashboard-data\.ts|src/hooks/use-grant-data\.ts|src/components/WorldMap\.tsx|scripts/getty_logic\.py|scripts/build_aggregates\.py|clean_getty_grants\.py|update_getty_grants\.py|getty_grants_pull\.py)$'
+          # --- Docs that, if touched in the same push, clear the check ---
+          DOCS='^(src/pages/Methodology\.tsx|JUDGMENT_CALLS\.md|CHANGES\.md)$'
+
+          BEFORE='${{ github.event.before }}'
+          AFTER='${{ github.event.after }}'
+          if [ -z "$AFTER" ] || echo "$AFTER" | grep -qE '^0+$'; then
+            echo "No after-SHA (branch delete?); skipping."; echo "drift=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if [ -z "$BEFORE" ] || echo "$BEFORE" | grep -qE '^0+$'; then
+            BEFORE=$(git rev-parse "$AFTER"^ 2>/dev/null || echo "")
+          fi
+          if [ -z "$BEFORE" ]; then
+            echo "No baseline to diff against; skipping."; echo "drift=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+
+          CHANGED=$(git diff --name-only "$BEFORE" "$AFTER")
+          echo "Changed files:"; echo "$CHANGED"
+
+          GOV_HITS=$(echo "$CHANGED" | grep -E "$GOVERNED" || true)
+          DOC_HITS=$(echo "$CHANGED" | grep -E "$DOCS" || true)
+
+          if [ -n "$GOV_HITS" ] && [ -z "$DOC_HITS" ]; then
+            echo "drift=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "files<<EOF"
+              echo "$GOV_HITS" | sed 's/^/- `/;s/$/`/'
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "No drift (governed files: $( [ -n "$GOV_HITS" ] && echo yes || echo no ), docs touched: $( [ -n "$DOC_HITS" ] && echo yes || echo no ))."
+            echo "drift=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open or update review issue
+        if: steps.drift.outputs.drift == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const files = `${{ steps.drift.outputs.files }}`;
+            const sha = context.sha.substring(0, 7);
+            const label = 'methodology-drift';
+            const body = [
+              `A push to \`main\` (${sha}) changed files that define documented behaviour, `,
+              `but did **not** touch the methodology page, \`JUDGMENT_CALLS.md\`, or \`CHANGES.md\`.`,
+              ``,
+              `**Please check these still match what the site says:**`,
+              files,
+              ``,
+              `If the change affects what users see, update **src/pages/Methodology.tsx** and/or `,
+              `**JUDGMENT_CALLS.md** to the new current state, and log the change in **CHANGES.md**. `,
+              `If it was purely internal (no behaviour change), just close this issue.`,
+              ``,
+              `_Auto-filed by the Methodology drift guard. It flags that logic changed without a doc `,
+              `edit; it does not read the prose, so it can't confirm the docs are wrong — only that they `,
+              `deserve a look._`,
+            ].join('\n');
+
+            // Ensure the label exists (ignore if it already does).
+            try { await github.rest.issues.createLabel({ ...context.repo, name: label, color: 'fbca04', description: 'Docs may be out of date with the code' }); } catch (e) {}
+
+            // Reuse an open issue if one is already waiting, else open a new one.
+            const existing = await github.rest.issues.listForRepo({ ...context.repo, state: 'open', labels: label, per_page: 1 });
+            if (existing.data.length > 0) {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: existing.data[0].number, body });
+            } else {
+              await github.rest.issues.create({ ...context.repo, title: '⚠️ Methodology may be out of date with the code', labels: [label], body });
+            }
