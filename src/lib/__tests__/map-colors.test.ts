@@ -37,6 +37,7 @@ describe('choropleth colour scale', () => {
 
   it('a country with no value renders at the lightest endpoint, not blank', () => {
     const s = makeColorScale([10, 20, 30], 'grantCount');
-    expect(s.color(0)).toBe(getRamp('grantCount')[0]);
+    expect(s.color(0)).toBe(getColorRange('grantCount')[0]);
   });
+
 });
